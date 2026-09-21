@@ -1,0 +1,211 @@
+#!/bin/bash
+# Termac claude wrapper — injects hooks for status tracking
+# Claude Code supports --settings to inject hooks from a file.
+
+# Remove our directory from PATH to find the real claude
+CLEANED_PATH=$(echo "$PATH" | tr ':' '\n' | grep -v "Termac.app/Contents/Resources/bin" | tr '\n' ':' | sed 's/:$//')
+REAL_CLAUDE=$(PATH="$CLEANED_PATH" which claude 2>/dev/null)
+
+if [ -z "$REAL_CLAUDE" ]; then
+    echo "claude: command not found" >&2
+    exit 127
+fi
+
+# Not in Termac? Run real claude directly.
+if [ -z "$TERMAC_TAB_ID" ]; then
+    exec "$REAL_CLAUDE" "$@"
+fi
+
+# Check if user already passed --settings
+for arg in "$@"; do
+    if [ "$arg" = "--settings" ]; then
+        exec "$REAL_CLAUDE" "$@"
+    fi
+done
+
+STATUS_DIR="/tmp/termac"
+mkdir -p "$STATUS_DIR"
+STATUS_FILE="$STATUS_DIR/$TERMAC_TAB_ID"
+
+# Write hook helper script (parses JSON stdin from Claude Code hooks)
+HOOK_HELPER="$STATUS_DIR/hook.py"
+cat > "$HOOK_HELPER" <<'PYEOF'
+import sys, json
+action = sys.argv[1]
+sf = sys.argv[2]
+try:
+    data = json.load(sys.stdin)
+except Exception:
+    data = {}
+r = {}
+if action == "pretool":
+    tool = data.get("tool_name", "")
+    inp = data.get("tool_input", {})
+    det = inp.get("file_path", inp.get("command", inp.get("pattern", "")))
+    r = {"status": "running", "tool": tool, "detail": str(det)[:80] if det else ""}
+elif action == "posttool":
+    tool = data.get("tool_name", "")
+    r = {"status": "running", "tool": tool}
+elif action == "toolfail":
+    tool = data.get("tool_name", "")
+    err = data.get("error", "")
+    if isinstance(err, dict):
+        err = err.get("message", str(err))
+    r = {"status": "error", "tool": tool, "error": str(err)[:80]}
+elif action == "stopfail":
+    err = data.get("error_type", data.get("error", "unknown"))
+    r = {"status": "error", "error": str(err)[:80]}
+elif action == "subagent-start":
+    r = {"status": "running", "tool": "Agent", "detail": "Subagent started"}
+elif action == "subagent-stop":
+    r = {"status": "running", "tool": "Agent", "detail": "Subagent finished"}
+with open(sf, "w") as f:
+    json.dump(r, f)
+PYEOF
+
+# Write hooks JSON to a temp file
+SETTINGS_FILE=$(mktemp "${TMPDIR:-/tmp}/termac-settings-XXXXXX")
+cat > "$SETTINGS_FILE" <<ENDJSON
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo running > $STATUS_FILE",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo running > $STATUS_FILE",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 $HOOK_HELPER pretool $STATUS_FILE",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 $HOOK_HELPER posttool $STATUS_FILE",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 $HOOK_HELPER toolfail $STATUS_FILE",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 $HOOK_HELPER subagent-start $STATUS_FILE",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 $HOOK_HELPER subagent-stop $STATUS_FILE",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo idle > $STATUS_FILE",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "StopFailure": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 $HOOK_HELPER stopfail $STATUS_FILE",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo idle > $STATUS_FILE",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo needs-input > $STATUS_FILE",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}
+ENDJSON
+
+# Clean up on exit: remove status file so Termac knows Claude has exited
+trap "rm -f '$STATUS_FILE' '$SETTINGS_FILE'" EXIT
+
+# Run claude as subprocess (not exec) so trap fires when claude exits
+"$REAL_CLAUDE" --settings "$SETTINGS_FILE" "$@"

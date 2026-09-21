@@ -1,0 +1,169 @@
+#!/bin/bash
+# Termac codex wrapper — injects hooks for status tracking
+# Codex CLI has a built-in hooks system (feature flag: codex_hooks)
+# that uses PascalCase event names and reads hooks.json from .codex/ dir.
+
+# Remove our directory from PATH to find the real codex
+CLEANED_PATH=$(echo "$PATH" | tr ':' '\n' | grep -v "Termac.app/Contents/Resources/bin" | tr '\n' ':' | sed 's/:$//')
+REAL_CODEX=$(PATH="$CLEANED_PATH" which codex 2>/dev/null)
+
+if [ -z "$REAL_CODEX" ]; then
+    echo "codex: command not found" >&2
+    exit 127
+fi
+
+# Not in Termac? Run real codex directly.
+if [ -z "$TERMAC_TAB_ID" ]; then
+    exec "$REAL_CODEX" "$@"
+fi
+
+STATUS_DIR="/tmp/termac"
+mkdir -p "$STATUS_DIR"
+
+# Write shared hook helper script (parses JSON stdin from Codex hooks)
+# All tabs share this script; tab-specific path comes from $TERMAC_TAB_ID env var.
+HOOK_HELPER="$STATUS_DIR/codex-hook.py"
+cat > "$HOOK_HELPER" <<'PYEOF'
+import sys, json, os
+action = sys.argv[1]
+tab_id = os.environ.get("TERMAC_TAB_ID", "")
+if not tab_id:
+    sys.exit(0)
+sf = f"/tmp/termac/{tab_id}"
+try:
+    data = json.load(sys.stdin)
+except Exception:
+    data = {}
+r = {}
+if action == "pretool":
+    tool = data.get("tool_name", "")
+    inp = data.get("tool_input", {})
+    det = inp.get("file_path", inp.get("command", inp.get("pattern", "")))
+    r = {"status": "running", "tool": tool, "detail": str(det)[:80] if det else ""}
+elif action == "posttool":
+    tool = data.get("tool_name", "")
+    err = data.get("error", "")
+    if err:
+        if isinstance(err, dict):
+            err = err.get("message", str(err))
+        r = {"status": "error", "tool": tool, "error": str(err)[:80]}
+    else:
+        r = {"status": "running", "tool": tool}
+elif action == "stop":
+    r = {"status": "idle"}
+with open(sf, "w") as f:
+    json.dump(r, f)
+PYEOF
+
+# Codex discovers hooks.json from project .codex/ dir.
+# Write Termac hooks using $TERMAC_TAB_ID (expanded at hook runtime).
+HOOKS_DIR="${PWD}/.codex"
+HOOKS_FILE="${HOOKS_DIR}/hooks.json"
+HOOKS_BACKUP=""
+
+if [ -f "$HOOKS_FILE" ]; then
+    HOOKS_BACKUP="${HOOKS_FILE}.termac-backup"
+    cp "$HOOKS_FILE" "$HOOKS_BACKUP"
+fi
+
+mkdir -p "$HOOKS_DIR"
+
+# Use quoted heredoc so $TERMAC_TAB_ID stays literal (resolved at hook runtime).
+# $HOOK_HELPER path is injected via sed after writing.
+cat > "$HOOKS_FILE" <<'ENDJSON'
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo running > /tmp/termac/$TERMAC_TAB_ID",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo running > /tmp/termac/$TERMAC_TAB_ID",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 __HOOK_HELPER__ pretool",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 __HOOK_HELPER__ posttool",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 __HOOK_HELPER__ stop",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}
+ENDJSON
+
+# Inject the actual helper path
+sed -i '' "s|__HOOK_HELPER__|${HOOK_HELPER}|g" "$HOOKS_FILE"
+
+# Cleanup: restore original hooks.json on exit
+cleanup() {
+    if [ -n "$HOOKS_BACKUP" ]; then
+        mv "$HOOKS_BACKUP" "$HOOKS_FILE"
+    else
+        rm -f "$HOOKS_FILE"
+        rmdir "$HOOKS_DIR" 2>/dev/null
+    fi
+    rm -f "$STATUS_DIR/$TERMAC_TAB_ID"
+}
+trap cleanup EXIT
+
+# Check if user already passed --enable codex_hooks
+NEEDS_ENABLE=true
+for arg in "$@"; do
+    if [ "$arg" = "codex_hooks" ]; then
+        NEEDS_ENABLE=false
+        break
+    fi
+done
+
+# Run codex as subprocess (not exec) so trap fires on exit
+if [ "$NEEDS_ENABLE" = true ]; then
+    "$REAL_CODEX" --enable codex_hooks "$@"
+else
+    "$REAL_CODEX" "$@"
+fi

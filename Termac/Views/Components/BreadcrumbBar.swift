@@ -1,0 +1,196 @@
+import SwiftUI
+
+/// Thin breadcrumb bar showing the current working directory with clickable path segments
+struct BreadcrumbBar: View {
+    let workingDirectory: String
+    let gitBranch: String?
+    var claudeStatus: ClaudeStatus? = nil
+    var claudeToolDetail: String? = nil
+
+    private var theme: AppTheme { SettingsManager.shared.theme }
+    private var usesLightChrome: Bool {
+        if case .light = theme { return true }
+        return false
+    }
+
+    private var pathSegments: [(name: String, fullPath: String)] {
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        let displayPath: String
+        let basePath: String
+
+        if workingDirectory == home {
+            return [("~", home)]
+        } else if workingDirectory.hasPrefix(home) {
+            displayPath = "~" + workingDirectory.dropFirst(home.count)
+            basePath = home
+        } else {
+            displayPath = workingDirectory
+            basePath = "/"
+        }
+
+        let parts = displayPath.split(separator: "/", omittingEmptySubsequences: true)
+        var segments: [(String, String)] = []
+        var currentPath = basePath
+
+        for (index, part) in parts.enumerated() {
+            let name = String(part)
+            if index == 0 && name == "~" {
+                currentPath = home
+            } else {
+                currentPath = (currentPath as NSString).appendingPathComponent(name)
+            }
+            segments.append((name, currentPath))
+        }
+
+        return segments
+    }
+
+    var body: some View {
+        Group {
+            if usesLightChrome {
+                HStack(spacing: 0) {
+                    Image(systemName: "folder.fill")
+                        .font(.system(size: 8))
+                        .foregroundStyle(theme.iconDimmed.opacity(0.75))
+                        .padding(.leading, 10)
+                        .padding(.trailing, 3)
+
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 1) {
+                            ForEach(Array(pathSegments.enumerated()), id: \.offset) { index, segment in
+                                if index > 0 {
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 6.5, weight: .semibold))
+                                        .foregroundStyle(theme.disabledText.opacity(0.65))
+                                }
+
+                                Button {
+                                    NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: segment.fullPath)
+                                } label: {
+                                    Text(segment.name)
+                                        .font(.system(size: 10, weight: .regular, design: .monospaced))
+                                        .foregroundStyle(index == pathSegments.count - 1 ? theme.secondaryText.opacity(0.88) : theme.disabledText.opacity(0.82))
+                                        .padding(.horizontal, 3)
+                                        .padding(.vertical, 1)
+                                }
+                                .buttonStyle(.plain)
+                                .onHover { hovering in
+                                    if hovering {
+                                        NSCursor.pointingHand.push()
+                                    } else {
+                                        NSCursor.pop()
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.vertical, 2)
+                    }
+
+                    Spacer()
+
+                    if let status = claudeStatus, status != .unknown {
+                        HStack(spacing: 3) {
+                            Image(systemName: status.icon)
+                                .font(.system(size: 7))
+                                .foregroundStyle(status.color.opacity(0.8))
+                            Text(claudeToolDetail ?? status.label)
+                                .font(.system(size: 9, weight: .medium, design: .monospaced))
+                                .foregroundStyle(status.color.opacity(0.8))
+                                .lineLimit(1)
+                        }
+                        .padding(.trailing, 6)
+                    }
+
+                    if let branch = gitBranch {
+                        HStack(spacing: 3) {
+                            Image(systemName: "arrow.triangle.branch")
+                                .font(.system(size: 7.5))
+                            Text(branch)
+                                .font(.system(size: 9.5, weight: .medium, design: .monospaced))
+                                .lineLimit(1)
+                        }
+                        .foregroundStyle(theme.brandCoral.opacity(0.75))
+                        .padding(.trailing, 10)
+                    }
+                }
+                .frame(height: 18)
+                .background(theme.isGlass ? Color.clear : theme.appCanvasBackground)
+                .overlay(alignment: .bottom) {
+                    theme.subtleBorder.opacity(0.38).frame(height: 0.5)
+                }
+            } else {
+                HStack(spacing: 0) {
+                    Image(systemName: "folder.fill")
+                        .font(.system(size: 9))
+                        .foregroundStyle(theme.iconDimmed)
+                        .padding(.leading, 12)
+                        .padding(.trailing, 4)
+
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 2) {
+                            ForEach(Array(pathSegments.enumerated()), id: \.offset) { index, segment in
+                                if index > 0 {
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 7, weight: .semibold))
+                                        .foregroundStyle(theme.disabledText)
+                                }
+
+                                Button {
+                                    NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: segment.fullPath)
+                                } label: {
+                                    Text(segment.name)
+                                        .font(.system(size: 11, design: .monospaced))
+                                        .foregroundStyle(index == pathSegments.count - 1 ? theme.secondaryText : theme.disabledText)
+                                        .padding(.horizontal, 4)
+                                        .padding(.vertical, 1)
+                                        .background(Color.white.opacity(0.001))
+                                }
+                                .buttonStyle(.plain)
+                                .onHover { hovering in
+                                    if hovering {
+                                        NSCursor.pointingHand.push()
+                                    } else {
+                                        NSCursor.pop()
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.vertical, 3)
+                    }
+
+                    Spacer()
+
+                    if let status = claudeStatus, status != .unknown {
+                        HStack(spacing: 3) {
+                            Image(systemName: status.icon)
+                                .font(.system(size: 8))
+                                .foregroundStyle(status.color.opacity(0.85))
+                            Text(claudeToolDetail ?? status.label)
+                                .font(.system(size: 10, weight: .medium, design: .monospaced))
+                                .foregroundStyle(status.color.opacity(0.85))
+                                .lineLimit(1)
+                        }
+                        .padding(.trailing, 8)
+                    }
+
+                    if let branch = gitBranch {
+                        HStack(spacing: 3) {
+                            Image(systemName: "arrow.triangle.branch")
+                                .font(.system(size: 8))
+                            Text(branch)
+                                .font(.system(size: 10, design: .monospaced))
+                                .lineLimit(1)
+                        }
+                        .foregroundStyle(theme.accentColor.opacity(0.8))
+                        .padding(.trailing, 12)
+                    }
+                }
+                .frame(height: 22)
+                .background(theme.isGlass ? Color.clear : theme.tabBarBackground.opacity(0.5))
+                .overlay(alignment: .bottom) {
+                    theme.subtleBorder.frame(height: 0.5)
+                }
+            }
+        }
+    }
+}
