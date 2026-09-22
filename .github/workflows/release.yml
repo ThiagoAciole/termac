@@ -23,7 +23,7 @@ env:
   IDENTITY: Termac Self-Signed
   # Fingerprint SHA-256 da identidade de assinatura (sem dois-pontos).
   # docs/SIGNING.md — atualize junto com os docs ao rotacionar a identidade.
-  EXPECTED_FINGERPRINT: "2139A400004CB814D9D2304DD320804E7896B7C74659EFC4B502C00479C8C67B"
+  EXPECTED_FINGERPRINT: "BD3410131BF1D658CD0E82C6585C0AB1EC30C9C8F826C985614C582514C5EED4"
 
 jobs:
   build:
