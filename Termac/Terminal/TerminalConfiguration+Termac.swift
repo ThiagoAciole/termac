@@ -54,7 +54,7 @@ enum TermacTerminalConfig {
             for keybind in ShortcutsCatalog.hostKeybinds {
                 builder.withCustom("keybind", keybind)
             }
-            builder.withCustom("command", "shell:\(command)")
+            builder.withCustom("command", command)
             builder.withCustom("term", "xterm-256color")
             builder.withCustom("shell-integration", "none")
             builder.withCustom("scrollback-limit", TermacConstants.scrollbackLimit)
@@ -97,7 +97,7 @@ enum TermacTerminalConfig {
         // child-session marker. Clear it before starting every login shell so
         // Claude launched in a new tab is treated as an independent session.
         let command = "unset CLAUDE_CODE_CHILD_SESSION; exec \(quoted) -l"
-        return "/bin/sh -c \(shellQuote(command))"
+        return "shell:/bin/sh -c \(shellQuote(command))"
     }
 
     /// Agent tabs boot the agent through a non-interactive login shell
@@ -106,9 +106,73 @@ enum TermacTerminalConfig {
     /// shell layer: the `exec`s collapse the boot shell away, so no
     /// wrapper `/bin/sh` is needed to run the unset first.
     static func makeAgentLaunchCommand(shellPath: String, agentCommand: String) -> String {
+        // Plain `binary [args…]` commands skip the shell roundtrip entirely:
+        // Ghostty execs the resolved binary itself (`direct:`), so the tab
+        // never pays for a zsh boot. Anything with shell syntax keeps the
+        // login-shell chain so pipes, env prefixes, and quotes keep working.
+        if let direct = directExecutableComponents(for: agentCommand) {
+            let commandLine = ([direct.path] + direct.arguments).joined(separator: " ")
+            return "direct:\(commandLine)"
+        }
         let quotedShell = shellQuote(shellPath)
         let script = "unset CLAUDE_CODE_CHILD_SESSION; \(agentCommand); exec \(quotedShell) -l"
-        return "\(quotedShell) -l -c \(shellQuote(script))"
+        return "shell:\(quotedShell) -l -c \(shellQuote(script))"
+    }
+
+    /// Splits `binary [arguments…]` and resolves the executable against the
+    /// app PATH plus the usual Homebrew/system prefixes. Returns nil when the
+    /// command contains shell syntax or the executable can't be resolved —
+    /// the caller then falls back to the shell chain.
+    static func directExecutableComponents(for command: String) -> (path: String, arguments: [String])? {
+        let parts = command.split(separator: " ", omittingEmptySubsequences: true).map(String.init)
+        guard let name = parts.first, !containsShellSyntax(command) else { return nil }
+        guard let path = resolveExecutable(named: name) else { return nil }
+        return (path, Array(parts.dropFirst()))
+    }
+
+    static func resolveExecutable(named name: String) -> String? {
+        let file = FileManager.default
+        if name.contains("/") {
+            guard name.hasPrefix("/") else { return nil }
+            return file.isExecutableFile(atPath: name) ? name : nil
+        }
+        for directory in executableSearchDirectories() {
+            let candidate = (directory as NSString).appendingPathComponent(name)
+            if file.isExecutableFile(atPath: candidate) { return candidate }
+        }
+        return nil
+    }
+
+    /// GUI apps inherit a slim PATH; Homebrew and local prefixes cover the
+    /// common agent installs before the fallback to the login shell.
+    private static func executableSearchDirectories() -> [String] {
+        var directories = (ProcessInfo.processInfo.environment["PATH"] ?? "")
+            .split(separator: ":", omittingEmptySubsequences: true)
+            .map(String.init)
+        directories.append(contentsOf: [
+            "/opt/homebrew/bin",
+            "/usr/local/bin",
+            "/usr/bin",
+            "/bin",
+            "/usr/sbin",
+            "/sbin",
+        ])
+        var seen = Set<String>()
+        return directories.filter { seen.insert($0).inserted }
+    }
+
+    /// Shell features `direct:` cannot express: separators, pipes,
+    /// redirection, expansion, quotes, and `VAR=value` env prefixes. Flags
+    /// like `--model=opus` are plain argv and stay direct.
+    static func containsShellSyntax(_ command: String) -> Bool {
+        let forbidden = CharacterSet(charactersIn: ";|&<>()$`\"'\\*?~#!\n{}[]")
+        if command.rangeOfCharacter(from: forbidden) != nil { return true }
+        if let first = command.split(separator: " ", omittingEmptySubsequences: true).first,
+           first.contains("="),
+           first.range(of: "^[A-Za-z_][A-Za-z0-9_]*=", options: .regularExpression) != nil {
+            return true
+        }
+        return false
     }
 
     static func loginShell() -> String {

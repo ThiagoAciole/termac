@@ -5,9 +5,18 @@
 
 import SwiftUI
 
+/// A Termac process opened from inside a Claude Code session inherits the
+/// child-session marker, and every PTY (shell or `direct:` agent) would pass
+/// it on. Clearing it once at startup keeps launched agents independent —
+/// the shell chains unset it too, but `direct:` has no shell to do it.
+func sanitizeInheritedEnvironment() {
+    unsetenv("CLAUDE_CODE_CHILD_SESSION")
+}
+
 @main
 struct TermacApp: App {
     init() {
+        sanitizeInheritedEnvironment()
         // Load prefs early; do not touch NSApp here - it is still nil.
         _ = AppSettings.shared
     }
