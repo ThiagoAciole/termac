@@ -15,8 +15,15 @@ final class TerminalSession: NSObject, ObservableObject, Identifiable {
     let id = UUID()
 
     @Published var title: String
-    @Published private(set) var agentIcon: TabAgentIcon?
     @Published var hasExited = false
+    /// User-set tab name from "Rename Tab…"; overrides the computed title.
+    @Published var customTitle: String?
+    /// Pinned tabs sort to the front of the strip and show a pin glyph.
+    @Published var isPinned = false
+    /// Hex color of the agent launched in this tab; tints the tab chip.
+    @Published var agentColorHex: String?
+    /// Name of the agent launched in this tab; becomes the tab title.
+    @Published var agentName: String?
 
     private(set) var pendingAgentCommand: String?
 
@@ -127,10 +134,30 @@ final class TerminalSession: NSObject, ObservableObject, Identifiable {
         return "\(directoryName) - \(base)"
     }
 
-    init(workingDirectory: String = NSHomeDirectory()) {
+    convenience init(workingDirectory: String = NSHomeDirectory()) {
         let shellPath = TermacTerminalConfig.loginShell()
-        let launchCommand = TermacTerminalConfig.makeLaunchCommand(shellPath: shellPath)
-        let shellName = (shellPath as NSString).lastPathComponent
+        self.init(
+            workingDirectory: workingDirectory,
+            launchCommand: TermacTerminalConfig.makeLaunchCommand(shellPath: shellPath),
+            shellName: (shellPath as NSString).lastPathComponent
+        )
+    }
+
+    /// Agent tab: boots the agent command directly (no interactive shell init)
+    /// and hands the tab to a login shell when the agent exits.
+    convenience init(runningAgent agent: CustomAgent, workingDirectory: String) {
+        let shellPath = TermacTerminalConfig.loginShell()
+        self.init(
+            workingDirectory: workingDirectory,
+            launchCommand: TermacTerminalConfig.makeAgentLaunchCommand(
+                shellPath: shellPath,
+                agentCommand: agent.command
+            ),
+            shellName: (shellPath as NSString).lastPathComponent
+        )
+    }
+
+    private init(workingDirectory: String, launchCommand: String, shellName: String) {
         let launchCwd = ProcessWorkingDirectory.isUsableDirectory(workingDirectory)
             ? workingDirectory
             : NSHomeDirectory()
@@ -265,10 +292,6 @@ final class TerminalSession: NSObject, ObservableObject, Identifiable {
     private func refreshTitleFromForeground() {
         let foreground = terminalView.foregroundPid
         let name = foreground.flatMap(Self.processName(for:))
-        let detectedAgent = TabAgentIcon.match(processName: name)
-        if agentIcon != detectedAgent {
-            agentIcon = detectedAgent
-        }
         let result = Self.hasRunningCommand(
             foregroundPid: foreground,
             foregroundName: name,
@@ -292,6 +315,29 @@ final class TerminalSession: NSObject, ObservableObject, Identifiable {
         if title != next {
             title = next
         }
+        // A user rename wins over every computed title, busy or idle; next
+        // comes the agent name stamped when the tab launched an agent.
+        if let customTitle, !customTitle.isEmpty {
+            if title != customTitle {
+                title = customTitle
+            }
+        } else if let agentName, title != agentName {
+            title = agentName
+        }
+    }
+
+    /// Stamps the tab as an agent tab: color tint + agent name as the title.
+    func markAsAgent(name: String, colorHex: String) {
+        agentName = name
+        agentColorHex = colorHex
+        refreshTitle()
+    }
+
+    /// Applies a rename; an empty name clears it and restores the computed title.
+    func applyCustomTitle(_ raw: String) {
+        let trimmed = raw.trimmingCharacters(in: .whitespaces)
+        customTitle = trimmed.isEmpty ? nil : trimmed
+        refreshTitle()
     }
 
     /// Recomputes the tab chip from current foreground / cwd / settings.

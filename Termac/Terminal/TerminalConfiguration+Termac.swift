@@ -91,7 +91,20 @@ enum TermacTerminalConfig {
 
     static func makeLaunchCommand(shellPath: String) -> String {
         let quoted = shellQuote(shellPath)
-        return "/bin/sh -c \(shellQuote("exec \(quoted) -l"))"
+        // A Termac process can be opened from Claude Code and inherit its
+        // child-session marker. Clear it before starting every login shell so
+        // Claude launched in a new tab is treated as an independent session.
+        let command = "unset CLAUDE_CODE_CHILD_SESSION; exec \(quoted) -l"
+        return "/bin/sh -c \(shellQuote(command))"
+    }
+
+    /// Agent tabs boot the agent through a non-interactive login shell
+    /// (`-l -c`: PATH from zprofile, no interactive zshrc/p10k init), then
+    /// hand the tab to a fresh login shell when the agent exits.
+    static func makeAgentLaunchCommand(shellPath: String, agentCommand: String) -> String {
+        let script = "\(agentCommand); exec \(shellQuote(shellPath)) -l"
+        let inner = "unset CLAUDE_CODE_CHILD_SESSION; exec \(shellQuote(shellPath)) -l -c \(shellQuote(script))"
+        return "/bin/sh -c \(shellQuote(inner))"
     }
 
     static func loginShell() -> String {

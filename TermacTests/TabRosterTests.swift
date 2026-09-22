@@ -178,4 +178,31 @@ struct TabRosterTests {
         #expect(roster.orderedIDs.isEmpty)
         #expect(roster.selectedID == nil)
     }
+
+    @Test func applyOrderPinsToFrontAndKeepsSelection() {
+        var roster = TabRoster()
+        let a = UUID()
+        let b = UUID()
+        let c = UUID()
+        roster.add(a)
+        roster.add(b)
+        roster.add(c)
+        roster.select(b)
+
+        // Pin c: it moves to the front, selection stays on b.
+        roster.applyOrder([c, a, b])
+        #expect(roster.orderedIDs == [c, a, b])
+        #expect(roster.selectedID == b)
+
+        // Omitted ids keep their relative position at the end.
+        roster.applyOrder([c])
+        #expect(roster.orderedIDs == [c, a, b])
+
+        // Unknown ids are ignored.
+        roster.applyOrder([UUID(), c])
+        #expect(roster.orderedIDs == [c, a, b])
+
+        roster.selectNext()
+        #expect(roster.selectedID == c)
+    }
 }

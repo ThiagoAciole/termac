@@ -27,6 +27,7 @@ final class TabManager: ObservableObject {
     private var roster = TabRoster()
     private var cancellables = Set<AnyCancellable>()
     private let makeSession: (String) -> TerminalSession
+    private let makeAgentSession: (String, CustomAgent) -> TerminalSession
     private let confirmCloseHandler: (TerminalSession, @escaping () -> Void) -> Void
     private let closeWindowHandler: (NSWindow?) -> Void
     private let shouldConfirmBusyClose: () -> Bool
@@ -34,6 +35,7 @@ final class TabManager: ObservableObject {
 
     init(
         makeSession: ((String) -> TerminalSession)? = nil,
+        makeAgentSession: ((String, CustomAgent) -> TerminalSession)? = nil,
         createInitialTab: Bool = true,
         confirmClose: ((TerminalSession, @escaping () -> Void) -> Void)? = nil,
         closeWindow: ((NSWindow?) -> Void)? = nil,
@@ -41,6 +43,9 @@ final class TabManager: ObservableObject {
         isSessionBusy: ((TerminalSession) -> Bool)? = nil
     ) {
         self.makeSession = makeSession ?? { TerminalSession(workingDirectory: $0) }
+        self.makeAgentSession = makeAgentSession ?? {
+            TerminalSession(runningAgent: $1, workingDirectory: $0)
+        }
         self.closeWindowHandler = closeWindow ?? { window in
             DispatchQueue.main.async { window?.close() }
         }
@@ -63,12 +68,25 @@ final class TabManager: ObservableObject {
 
     /// Opens a tab. When `inheritingCwd` is true, launches in the selected tab's cwd.
     func newTab(inheritingCwd: Bool = true) {
+        openSession(makeSession, inheritingCwd: inheritingCwd)
+    }
+
+    /// Runs a configured agent in a new tab, inheriting the selected tab's cwd.
+    /// The agent boots directly through a non-interactive login shell instead of
+    /// being pasted into an interactive one, so no zshrc init delays the launch.
+    /// The tab chip is tinted with the agent's color.
+    func runAgentInNewTab(_ agent: CustomAgent) {
+        openSession({ makeAgentSession($0, agent) }, inheritingCwd: true)
+        selectedSession?.markAsAgent(name: agent.name, colorHex: agent.colorHex)
+    }
+
+    private func openSession(_ factory: (String) -> TerminalSession, inheritingCwd: Bool) {
         dismissFindIfNeeded()
         let cwd = Self.workingDirectoryForNewTab(
             inheritingCwd: inheritingCwd,
             selected: selectedSession?.resolvedWorkingDirectory
         )
-        let session = makeSession(cwd)
+        let session = factory(cwd)
         session.onExited = { [weak self] exited in
             self?.close(exited, fromShellExit: true)
         }
@@ -195,6 +213,14 @@ final class TabManager: ObservableObject {
         self.selectedID = roster.selectedID
     }
 
+    /// Toggles the pin flag; pinned tabs sort to the front of the strip.
+    func togglePin(_ session: TerminalSession) {
+        session.isPinned.toggle()
+        sessions = sessions.filter(\.isPinned) + sessions.filter { !$0.isPinned }
+        roster.applyOrder(sessions.map(\.id))
+        selectedID = roster.selectedID
+    }
+
     func refreshAppearance() {
         for session in sessions {
             session.applyAppearance()
@@ -217,17 +243,6 @@ final class TabManager: ObservableObject {
 
     func resetZoom() {
         AppSettings.shared.resetZoom()
-    }
-
-    /// Runs a CLI agent in a new tab, inheriting the selected tab's cwd.
-    func runAgentInNewTab(_ agent: CLIAgent) {
-        newTab(inheritingCwd: true)
-        selectedSession?.runCommandWhenReady(agent.command)
-    }
-
-    /// Runs a CLI agent in the selected tab's shell (in its current cwd).
-    func runAgent(_ agent: CLIAgent) {
-        selectedSession?.runCommand(agent.command)
     }
 
     // MARK: - Find

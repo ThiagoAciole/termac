@@ -61,9 +61,8 @@ enum HeaderSizeSetting: String, CaseIterable, Identifiable {
         }
     }
 
-    /// Chrome button hit area.
-    /// AI agents menu glyph size, slightly larger than the other chrome icons.
-    var agentMenuIconSize: CGFloat {
+    /// Larger glyph size for the right-side actions (agents menu, settings gear).
+    var actionIconSize: CGFloat {
         switch self {
         case .compact: return 18
         case .regular: return 20

@@ -1,95 +1,81 @@
 <p align="center">
-  <img src="images/logo.png" alt="Termac" width="64">
+  <img src="images/logo.png" alt="Termac" width="96">
 </p>
 <h1 align="center">Termac</h1>
+
+<p align="center">
+  Terminal macOS nativo e minimalista, feito em Swift com <a href="https://github.com/Lakr233/libghostty-spm">libghostty</a>.
+</p>
 
 <p align="center">
   <img src="images/screenshot.png" alt="Termac" width="640">
 </p>
 
-A simple native macOS terminal built with Swift and [libghostty](https://github.com/Lakr233/libghostty-spm). Minimal be design - suited for everyday use, just not packed with the bells and whistles power users expect.
+## ✨ Destaques
 
-## Features
+- **Shells reais** via PTY e renderização Metal do Ghostty
+- **Abas com personalidade**: renomeie, fixe e lance **agentes de IA** com cor própria no chip da aba
+- **Agentes IA manuais**: cadastre Nome + Comando + Cor nas configurações e execute no dropdown — boot direto, sem esperar a shell
+- **Temas, fontes e zoom** do catálogo Ghostty, com tudo persistido em `~/.config/termac/config.yml`
 
-- Real PTY shells via Ghostty’s Metal renderer
-- Multi-window and tabs (⌘N / ⌘T / ⌘W, ⌘⇧[ / ⌘⇧])
-- Color themes from the GhosttyTheme catalog
-- Font family, size, weight, and line height
-- Window padding, starting position, and character-grid size
-- In-app keyboard shortcuts sheet (Settings)
+Lista completa: [docs/FEATURES.md](docs/FEATURES.md).
 
-Full list: [docs/FEATURES.md](docs/FEATURES.md).
+## 📦 Instalação
 
-## Install
-
-**Homebrew (recommended):**
+**Homebrew (recomendado):**
 
 ```bash
-brew trust --tap 0x96f/termac
-brew tap 0x96f/termac
+brew trust --tap ThiagoAciole/termac
+brew tap ThiagoAciole/termac
 brew install --cask termac
 ```
 
-The cask clears Gatekeeper quarantine on install. Details: [docs/HOMEBREW.md](docs/HOMEBREW.md).
+O cask limpa o quarantine do Gatekeeper. Detalhes: [docs/HOMEBREW.md](docs/HOMEBREW.md).
 
 **Manual:**
 
-1. Download `Termac-macos.zip` from the [latest release](https://github.com/0x96f/termac/releases/latest).
-2. Unzip it - you should get `Termac.app`.
-3. Move `Termac.app` somewhere lasting (for example `/Applications` or `~/Applications`).
-4. Open it (see below if macOS blocks the first launch).
+1. Baixe `Termac-macos.zip` da [última release](https://github.com/ThiagoAciole/termac/releases/latest).
+2. Descompacte e mova o `Termac.app` para `/Applications` (ou `~/Applications`).
+3. Na primeira abertura, se o macOS bloquear, veja [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md).
 
-## Self-signed builds
+## 🔐 Builds self-signed
 
-Release builds are signed with a stable **Termac Self-Signed** identity (not an Apple Developer ID / not notarized). Verify both the Authority string **and** the leaf SHA-256 fingerprint (CN alone is forgeable):
+Os builds são assinados com a identidade estável **Termac Self-Signed** (não é Apple Developer ID nem notarizado). Para validar, confira a Authority **e** o fingerprint SHA-256 do certificado (o CN sozinho é falsificável):
 
 ```bash
 codesign -dv --verbose=4 Termac.app
-# expect Authority=Termac Self-Signed
+# esperado: Authority=Termac Self-Signed
 codesign --verify --verbose=4 Termac.app
 
 codesign -d --extract-certificates=/tmp/termac-cert Termac.app
 openssl x509 -inform DER -in /tmp/termac-cert0 -noout -fingerprint -sha256
-# expect SHA256 Fingerprint=82:9B:F9:9F:A6:C3:28:64:98:C3:57:24:04:3A:F2:CD:71:4B:35:BD:D1:C2:88:B7:D8:86:B6:C2:DD:E2:2C:11
+# esperado: SHA256 Fingerprint=21:39:A4:00:00:4C:B8:14:D9:D2:30:4D:D3:20:80:4E:78:96:B7:C7:46:59:EF:C4:B5:02:C0:04:79:C8:C6:7B
 rm -f /tmp/termac-cert*
 ```
 
-Gatekeeper may still say the app “can’t be opened because it is from an unidentified developer.”
+Se o Gatekeeper reclamar na primeira abertura: botão direito no app → **Abrir** → **Abrir** (só uma vez), ou `xattr -dr com.apple.quarantine /caminho/Termac.app`.
 
-**Recommended:** right-click (or Control-click) `Termac.app` → **Open** → **Open** again in the dialog. You only need to do this once.
+Mais ajuda: [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) · Mantenedores: [docs/SIGNING.md](docs/SIGNING.md).
 
-**Alternative** (clears the quarantine flag after download):
-
-```bash
-xattr -dr com.apple.quarantine /path/to/Termac.app
-open /path/to/Termac.app
-```
-
-More help: [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md). Maintainers: [docs/SIGNING.md](docs/SIGNING.md).
-
-## Requirements
+## 🛠 Requisitos e build
 
 - macOS 15.6+
-- Xcode 16+ (with Swift 5 / macOS SDK) to build from source
-
-## Build from source
+- Xcode 16+ (Swift 5 / SDK macOS)
 
 ```bash
-git clone --recurse-submodules <your-repo-url> termac
+git clone --recurse-submodules https://github.com/ThiagoAciole/termac.git
 cd termac
 open Termac.xcodeproj
 ```
 
-If you already cloned without submodules:
+Já clonou sem os submódulos? `git submodule update --init --recursive`.
 
-```bash
-git submodule update --init --recursive
-```
+Build e rode o scheme **Termac**. O App Sandbox fica **off** de propósito — o Ghostty precisa spawnar uma shell real (`.exec`). Para gerar o DMG assinado: `./Script/make-dmg.sh`.
 
-Build and run the **termac** scheme. App sandbox is **off** so Ghostty can spawn a real shell (`.exec`).
+## 🤖 Para IAs e contribuidores
 
-If packages fail to resolve or shells won’t start, see [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md).
+O [AGENTS.md](AGENTS.md) concentra o guia operacional: comandos de build/teste, mapa de código, fluxo de agentes e invariantes do projeto.
 
-## License
+## 📄 Licença
 
 MIT

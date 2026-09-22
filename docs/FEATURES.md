@@ -1,96 +1,103 @@
-# Termac features
+# Funcionalidades
 
-Termac is a minimal native macOS terminal (SwiftUI + [libghostty](https://github.com/Lakr233/libghostty-spm)). It targets quick commands, not full Ghostty parity. Requires macOS 15.6+.
+Termac é um terminal macOS nativo e minimalista (SwiftUI + [libghostty](https://github.com/Lakr233/libghostty-spm)). O foco é o dia a dia, não paridade total com o Ghostty. Requer macOS 15.6+.
 
-## Windows & tabs
+## Janelas e abas
 
-- **New window** - ⌘N opens another main window.
-- **Tab bar** - Titles, per-tab close, **+** (new tab), gear (Settings). Overflowing tabs scroll with left/right arrows (and stay clear of the trailing buttons). Empty chrome is draggable (hidden title bar); double-click zooms the window. Toggle **Vertical tabs** in Settings → Window for a full-height left rail under the traffic lights (drag the trailing edge to resize; width persists in `config.yml`). Content column keeps a top strip with a sidebar show/hide control, drag, **+**, and Settings.
-- **Shortcuts** - ⌘T new tab, ⌘W close tab, ⌘⇧] / ⌘⇧[ next / previous tab, ⌘⇧← / ⌘⇧→ move tab left / right.
-- **Titles** - Tab titles show the foreground command basename (e.g. `node` for `node index.js`), or a program OSC title while that command is running (e.g. Cursor Agent), and the login shell when idle. By default titles are prefixed with the cwd basename (`dir - node` / `dir - zsh`); toggle in Settings → Window.
-- **New tab directory** - ⌘T / **+** open in the active tab’s working directory (usually the shell process cwd; OSC 7 when the shell emits it). New windows and replacement tabs after shell exit start in `$HOME`.
-- **Close with running command** - Closing a tab that has a foreground process prompts for confirmation (toggle in Settings → Window).
-- **Last tab** - Closing the last tab closes the window. If the shell exits on the last tab, a new tab is opened instead.
+- **Nova janela** — ⌘N abre outra janela principal.
+- **Barra de abas** — título, fechar por aba, **+** (nova aba), menu de agentes (⌘) e botão de configurações. Abas que transbordam rolam com as setas laterais. O chrome vazio é arrastável; duplo clique amplia a janela.
+- **Abas verticais** — Settings → Janela → **Abas verticais** troca a barra por um rail à esquerda sob os traffic lights (largura arrastável, persistida no `config.yml`).
+- **Renomear aba** — menu de contexto da aba → **Rename Tab…**; nome vazio restaura o título automático.
+- **Fixar aba** — menu de contexto → **Pin Tab**; abas fixadas vão para o início da fila com glifo de pin e seleção preservada.
+- **Atalhos** — ⌘T nova aba, ⌘W fechar, ⌘⇧]/⌘⇧[ próxima/anterior, ⌘⇧←/⌘⇧→ mover.
+- **Títulos** — mostram o basename do comando em foreground (ex.: `node` para `node index.js`), título OSC do programa enquanto roda, e a shell de login em idle. Por padrão recebem o prefixo do diretório atual (`dir - node`); toggle em Settings → Janela.
+- **Diretório da nova aba** — ⌘T / **+** abrem no diretório da aba ativa (cwd da shell ou OSC 7). Janelas novas e abas de reposição após exit abrem em `$HOME`.
+- **Fechar com comando rodando** — fechar aba com processo em foreground pede confirmação (toggle em Settings → Janela).
+- **Última aba** — fechar a última fecha a janela; se a shell sair na última, uma aba nova é aberta no lugar.
+
+## Agentes de IA
+
+- **Cadastro manual** — Settings → Agentes IA → **Add Agent…** (Nome + Comando + Cor). Nada é detectado do sistema: só roda o que você cadastrou.
+- **Dropdown no header** — cada item mostra a cor do agente; clique abre **nova aba** no diretório da aba ativa e executa o comando.
+- **Boot direto** — o agente spawna via `zsh -l -c '<comando>; exec zsh -l'`, pulando o init da shell interativa (zshrc/p10k). Ao sair, uma shell de login assume a mesma aba.
+- **Cor do agente** — o chip da aba inteiro recebe o tint da cor (selecionada, hover e idle).
+- **Título** — a aba fica com o nome do agente. Um rename manual pelo menu de contexto tem precedência.
+- **Padrão** — a lista nova vem com Tompero, Claude Code, Codex e OpenCode (cores configuráveis).
 
 ## Terminal
 
-- **Login shell** - Real PTY via Ghostty `.exec`; shell from the user account (`$SHELL` / passwd), launched as a login shell.
-- **Rendering** - Metal surface from libghostty.
-- **Bell** - System beep; dock bounce / attention when the app is inactive.
-- **URLs** - Terminal URL requests open in the default browser.
-- **Find** - ⌘F opens a thin find bar; matches are highlighted in scrollback via Ghostty search. Next/previous from the bar; Esc closes.
-- **Font zoom** - ⌘+ / ⌘− change the active tab’s size temporarily; ⌘0 resets to the Settings font size. Changing Settings (or Reload Configuration) also clears zoom and applies the new Settings size (not written to `config.yml`).
-- **Theme chrome** - Window / tab bar background and app appearance follow the selected color theme.
+- **Login shell** — PTY real via Ghostty `.exec`; shell da conta do usuário (`$SHELL`/passwd), lançada como login shell.
+- **Renderização** — superfície Metal do libghostty.
+- **Bell** — beep do sistema; bounce no dock quando o app está inativo.
+- **URLs** — links do terminal abrem no browser padrão.
+- **Find** — ⌘F abre a barra de busca; matches destacados no scrollback. Próximo/anterior pela barra; Esc fecha.
+- **Zoom de fonte** — ⌘+/⌘− mudam o tamanho da aba ativa temporariamente; ⌘0 volta ao valor das Settings. Recarregar a config também limpa o zoom (não persiste no `config.yml`).
+- **Chrome temático** — fundo de janela/barra de abas e aparência do app seguem o tema escolhido.
 
 ## Settings
 
-Open with ⌘, or the tab-bar gear. Values persist in `~/.config/termac/config.yml` (created with defaults on first launch). Changing Settings writes the file immediately; after editing the file by hand, use **File → Reload Configuration** (⌘⇧,). Window size/position apply to **new** windows only.
+Abre com ⌘, ou o botão de configurações. Os valores persistem em `~/.config/termac/config.yml` (criado com defaults no primeiro boot). Mudanças nas Settings gravam o arquivo na hora; editou à mão? **File → Reload Configuration** (⌘⇧,). Tamanho/posição de janela valem só para **novas** janelas.
 
-| Section                | Controls                                                                                                                                                            |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Theme**              | GhosttyTheme catalog, grouped Light / Dark. Defaults: GitHub Light Default / GitHub Dark Default.                                                                   |
-| **Font**               | Family (System or detected monospace), size 8–32 px (default 13), line height 0.8–2.0×, weight Regular / Medium / Semibold / Bold.                                  |
-| **Window**             | Confirm before closing tabs with a running command (default on); show directory in tab titles (default on); vertical tabs (default off); padding 0–64 px; starting X×Y from the top-left of the main screen (clamped to the visible frame); size as character grid (cols 20–500, rows 5–200; default 80×24). |
-| **Keyboard Shortcuts** | Opens a read-only sheet (same list as below).                                                                                                                       |
-| **Configuration**      | **Open Configuration…** opens `config.yml` in the default text editor (Ghostty-style).                                                                              |
+| Seção | Controles |
+| --- | --- |
+| **Aparência** | Tema (catálogo GhosttyTheme, Light/Dark), fonte (família, tamanho 8–32 px, line height 0.8–2.0×, peso), zoom de interface e terminal |
+| **Janela** | Confirmar fechamento com comando rodando (on), diretório no título (on), abas verticais (off), padding 0–64 px, posição X×Y a partir do topo-esquerda, tamanho em grid de caracteres (20–500 × 5–200, default 80×24) |
+| **Header** | Tamanho do chrome (compact/regular/large); **Right Buttons**: ícone do menu de agentes, ícone de configurações (SF Symbols curados) e tamanho dos dois (70–160%) |
+| **Agentes IA** | Lista de agentes cadastrados (Nome + Comando + Cor, editável), remover, **Add Agent…** |
+| **Atalhos** | Sheet somente leitura com a lista de atalhos |
+| **Configuração** | **Open Configuration…** abre o `config.yml` no editor padrão |
 
-## Keyboard shortcuts
+## Atalhos de teclado
 
-Source of truth: `termac/Settings/ShortcutsCatalog.swift` (also drives Ghostty terminal keybinds after `keybind=clear`).
+Fonte da verdade: `Termac/Settings/ShortcutsCatalog.swift` (também alimenta os keybinds do Ghostty após `keybind=clear`).
 
-### Window & Tabs
+### Janelas e abas (menus do app)
 
-| Action            | Keys |
-| ----------------- | ---- |
-| New Window        | ⌘N   |
-| New Tab           | ⌘T   |
-| Close Tab         | ⌘W   |
-| Show Next Tab     | ⌘⇧]  |
-| Show Previous Tab | ⌘⇧[  |
-| Move Tab Left     | ⌘⇧←  |
-| Move Tab Right    | ⌘⇧→  |
-| Find              | ⌘F   |
-| Larger            | ⌘+   |
-| Smaller           | ⌘−   |
-| Actual Size       | ⌘0   |
+| Ação | Teclas |
+| --- | --- |
+| Nova janela | ⌘N |
+| Nova aba | ⌘T |
+| Fechar aba | ⌘W |
+| Próxima aba | ⌘⇧] |
+| Aba anterior | ⌘⇧[ |
+| Mover aba à esquerda | ⌘⇧← |
+| Mover aba à direita | ⌘⇧→ |
+| Find | ⌘F |
+| Aumentar | ⌘+ |
+| Diminuir | ⌘− |
+| Tamanho real | ⌘0 |
 | Reload Configuration | ⌘⇧, |
 
-### Terminal
+### Terminal (keybinds do Ghostty)
 
-| Action               | Keys |
-| -------------------- | ---- |
-| Move Word Left       | ⌥←   |
-| Move Word Right      | ⌥→   |
-| Move to Line Start   | ⌘←   |
-| Move to Line End     | ⌘→   |
-| Delete to Line Start | ⌘⌫   |
-| Copy                 | ⌘C   |
-| Paste                | ⌘V   |
-| Scroll to Top        | ⌘↖   |
-| Scroll to Bottom     | ⌘↘   |
-| Scroll Page Up       | ⌘⇞   |
-| Scroll Page Down     | ⌘⇟   |
+| Ação | Teclas |
+| --- | --- |
+| Palavra à esquerda | ⌥← |
+| Palavra à direita | ⌥→ |
+| Início da linha | ⌘← |
+| Fim da linha | ⌘→ |
+| Apagar até o início da linha | ⌘⌫ |
+| Copiar | ⌘C |
+| Colar | ⌘V |
+| Rolar ao topo | ⌘↖ |
+| Rolar ao fim | ⌘↘ |
+| Página acima | ⌘⇞ |
+| Página abaixo | ⌘⇟ |
 
-Window & tab shortcuts are handled by the app menus. Terminal shortcuts are Ghostty keybinds installed by the host.
+## Comportamento fixo do Ghostty
 
-## Fixed Ghostty behavior
+Defaults donos do host, sem exposição em Settings:
 
-Not exposed in Settings (host-owned defaults):
-
-- Scrollback limit ~4 MB
-- Scrollbar never shown
-- Option key as Alt
-- Clipboard: read deny (OSC 52), write allow; paste protection off until libghostty can show a real confirm UI
+- Scrollback ~4 MB; scrollbar nunca exibida
+- Option como Alt; cursor bloco piscante
+- Clipboard: leitura negada (OSC 52), escrita liberada; paste protection off até o libghostty ter UI de confirmação
 - Shell integration off
-- Blinking block cursor
-- `TERM=xterm-256color`, `COLORTERM=truecolor`, `TERM_PROGRAM=Termac` (+ version when available)
+- `TERM=xterm-256color`, `COLORTERM=truecolor`, `TERM_PROGRAM=Termac` (+ versão quando disponível)
 
-## Out of scope
+## Fora de escopo
 
-Termac does not expose (among other Ghostty capabilities):
-
-- Splits / panes
+- Splits/panes
 - Inspector
-- Custom `ghostty.conf` / profiles
-- Remappable shortcuts in the UI
-- Sandboxed / in-memory backends (app sandbox stays off for real shells)
+- `ghostty.conf` customizado / perfis
+- Atalhos remapeáveis na UI
+- Backends sandboxed/in-memory (sandbox do app fica off para shells reais)

@@ -7,14 +7,21 @@ import Testing
 @testable import Termac
 
 struct HeaderSizeSettingTests {
-    @Test func agentMenuIconIsLargerThanStandardChromeIcon() {
-        #expect(HeaderSizeSetting.compact.agentMenuIconSize > HeaderSizeSetting.compact.buttonIconSize)
-        #expect(HeaderSizeSetting.regular.agentMenuIconSize > HeaderSizeSetting.regular.buttonIconSize)
-        #expect(HeaderSizeSetting.large.agentMenuIconSize > HeaderSizeSetting.large.buttonIconSize)
+    @Test func chromeIconScalesWithHeaderSize() {
+        #expect(HeaderSizeSetting.compact.buttonIconSize < HeaderSizeSetting.regular.buttonIconSize)
+        #expect(HeaderSizeSetting.regular.buttonIconSize < HeaderSizeSetting.large.buttonIconSize)
     }
 
-    @Test func agentMenuIconGrowsWithHeaderSize() {
-        #expect(HeaderSizeSetting.compact.agentMenuIconSize < HeaderSizeSetting.regular.agentMenuIconSize)
-        #expect(HeaderSizeSetting.regular.agentMenuIconSize < HeaderSizeSetting.large.agentMenuIconSize)
+    @Test func actionIconIsLargerThanStandardChromeIcon() {
+        #expect(HeaderSizeSetting.compact.actionIconSize > HeaderSizeSetting.compact.buttonIconSize)
+        #expect(HeaderSizeSetting.regular.actionIconSize > HeaderSizeSetting.regular.buttonIconSize)
+        #expect(HeaderSizeSetting.large.actionIconSize > HeaderSizeSetting.large.buttonIconSize)
+    }
+
+    @Test func chromeFrameScalesWithHeaderSize() {
+        #expect(HeaderSizeSetting.compact.buttonFrameWidth < HeaderSizeSetting.regular.buttonFrameWidth)
+        #expect(HeaderSizeSetting.regular.buttonFrameWidth < HeaderSizeSetting.large.buttonFrameWidth)
+        #expect(HeaderSizeSetting.compact.buttonFrameHeight < HeaderSizeSetting.regular.buttonFrameHeight)
+        #expect(HeaderSizeSetting.regular.buttonFrameHeight < HeaderSizeSetting.large.buttonFrameHeight)
     }
 }

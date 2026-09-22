@@ -57,6 +57,15 @@ struct TabRoster {
         orderedIDs.swapAt(index, target)
     }
 
+    /// Re-applies an explicit order (e.g. pinned tabs moved to the front),
+    /// preserving selection and any ids the caller omitted.
+    mutating func applyOrder(_ ids: [UUID]) {
+        let known = Set(orderedIDs)
+        let sorted = ids.filter { known.contains($0) }
+        let omitted = orderedIDs.filter { !ids.contains($0) }
+        orderedIDs = sorted + omitted
+    }
+
     /// Removes `id` and updates selection to mirror `TabManager.close`.
     mutating func remove(id: UUID, fromShellExit: Bool) -> RemoveOutcome {
         guard let index = orderedIDs.firstIndex(of: id) else {

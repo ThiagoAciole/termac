@@ -40,7 +40,7 @@ struct SettingsView: View {
                     Label("Configuração", systemImage: "gearshape")
                 }
         }
-        .frame(width: 440, height: 780)
+        .frame(width: 440, height: 620)
         .padding(8)
         .sheet(isPresented: $showingShortcuts) {
             ShortcutsView()
@@ -239,6 +239,33 @@ private struct HeaderSettingsView: View {
                 Picker("Size", selection: $settings.headerSize) {
                     ForEach(HeaderSizeSetting.allCases) { size in
                         Text(size.displayName).tag(size)
+                    }
+                }
+            }
+
+            Section("Right Buttons") {
+                Picker("Agents icon", selection: $settings.agentsIconSymbol) {
+                    ForEach(ChromeIconOptions.agentsMenu, id: \.self) { name in
+                        Label(name, systemImage: name).tag(name)
+                    }
+                }
+
+                Picker("Settings icon", selection: $settings.settingsIconSymbol) {
+                    ForEach(ChromeIconOptions.settingsMenu, id: \.self) { name in
+                        Label(name, systemImage: name).tag(name)
+                    }
+                }
+
+                LabeledContent("Icon size") {
+                    HStack(spacing: 8) {
+                        Text("\(Int((settings.actionIconScale * 100).rounded()))%")
+                            .monospacedDigit()
+                            .frame(width: 44, alignment: .trailing)
+                        Slider(
+                            value: $settings.actionIconScale,
+                            in: AppSettings.Limits.actionIconScale,
+                            step: 0.05
+                        )
                     }
                 }
             }

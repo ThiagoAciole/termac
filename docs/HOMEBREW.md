@@ -1,31 +1,31 @@
 # Homebrew
 
-Termac ships via the personal tap [`0x96f/homebrew-termac`](https://github.com/0x96f/homebrew-termac) (not official `homebrew-cask` — the app is self-signed / not notarized).
+O Termac é distribuído pelo tap pessoal [`ThiagoAciole/homebrew-termac`](https://github.com/ThiagoAciole/homebrew-termac) (não é o `homebrew-cask` oficial — o app é self-signed, sem notarização).
 
 ## Install
 
-Homebrew 6+ requires trusting third-party taps before install:
+O Homebrew 6+ exige confiar em taps de terceiros antes de instalar:
 
 ```bash
-brew trust --tap 0x96f/termac
-brew tap 0x96f/termac
+brew trust --tap ThiagoAciole/termac
+brew tap ThiagoAciole/termac
 brew install --cask termac
 ```
 
-The cask clears Gatekeeper quarantine in `postflight`, so brew users should not need the manual `xattr` step. Builds are still self-signed — verify the leaf SHA-256 fingerprint (see [SIGNING.md](SIGNING.md)).
+O cask limpa o quarantine do Gatekeeper no `postflight`, então quem usa brew não precisa do passo manual de `xattr`. Os builds continuam self-signed — verifique o fingerprint SHA-256 da folha ([SIGNING.md](SIGNING.md)).
 
-## Maintainer: auto-bump on release
+## Mantenedor: auto-bump na release
 
-The [release workflow](../.github/workflows/release.yml) updates `Casks/termac.rb` (`version` + `sha256`) after each `v*` tag when this secret is set:
+O workflow de release atualiza o `Casks/termac.rb` (`version` + `sha256`) após cada tag `v*` quando este secret existir:
 
-| Secret               | Purpose                                                                           |
+| Secret               | Finalidade                                                                        |
 | -------------------- | --------------------------------------------------------------------------------- |
-| `HOMEBREW_TAP_TOKEN` | PAT (classic or fine-grained) with **contents: write** on `0x96f/homebrew-termac` |
+| `HOMEBREW_TAP_TOKEN` | PAT (classic ou fine-grained) com **contents: write** em `ThiagoAciole/homebrew-termac` |
 
-Create a fine-grained token scoped to that repo only, then:
+Crie um token fine-grained com escopo só nesse repo, então:
 
 ```bash
-gh secret set HOMEBREW_TAP_TOKEN --repo 0x96f/termac
+gh secret set HOMEBREW_TAP_TOKEN --repo ThiagoAciole/termac
 ```
 
-If the secret is missing, the release still publishes the zip and skips the cask bump with a warning.
+Sem o secret, a release publica o zip normalmente e pula o bump do cask com um aviso.

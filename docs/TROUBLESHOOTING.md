@@ -1,47 +1,53 @@
-# Troubleshooting
+# Solução de problemas
 
-## Gatekeeper blocks the app
+## Gatekeeper bloqueia o app
 
-Release builds are self-signed (not notarized). On first open, macOS may refuse to launch the app.
+Os builds são self-signed (não notarizados). Na primeira abertura o macOS pode recusar executar.
 
-**Recommended:** right-click (or Control-click) `Termac.app` → **Open** → **Open** again. Once is enough.
+**Recomendado:** botão direito (ou Control-click) no `Termac.app` → **Abrir** → **Abrir** de novo no diálogo. Só precisa uma vez.
 
-**Alternative:**
+**Alternativa:**
 
 ```bash
-xattr -dr com.apple.quarantine /path/to/Termac.app
-open /path/to/Termac.app
+xattr -dr com.apple.quarantine /caminho/para/Termac.app
+open /caminho/para/Termac.app
 ```
 
-To confirm the release signature (Authority **and** leaf fingerprint — CN alone is forgeable):
+Para confirmar a assinatura (Authority **e** fingerprint da folha — o CN sozinho é falsificável):
 
 ```bash
-codesign -dv --verbose=4 /path/to/Termac.app
-# expect Authority=Termac Self-Signed
-codesign -d --extract-certificates=/tmp/termac-cert /path/to/Termac.app
+codesign -dv --verbose=4 /caminho/para/Termac.app
+# esperado: Authority=Termac Self-Signed
+codesign -d --extract-certificates=/tmp/termac-cert /caminho/para/Termac.app
 openssl x509 -inform DER -in /tmp/termac-cert0 -noout -fingerprint -sha256
-# expect SHA256 Fingerprint=82:9B:F9:9F:A6:C3:28:64:98:C3:57:24:04:3A:F2:CD:71:4B:35:BD:D1:C2:88:B7:D8:86:B6:C2:DD:E2:2C:11
+# esperado: SHA256 Fingerprint=21:39:A4:00:00:4C:B8:14:D9:D2:30:4D:D3:20:80:4E:78:96:B7:C7:46:59:EF:C4:B5:02:C0:04:79:C8:C6:7B
 rm -f /tmp/termac-cert*
 ```
 
-Homebrew installs clear quarantine automatically — see [HOMEBREW.md](HOMEBREW.md).
+Instalações via Homebrew limpam o quarantine automaticamente — [HOMEBREW.md](HOMEBREW.md). Veja também a seção Builds self-signed no [README](../README.md) e [SIGNING.md](SIGNING.md).
 
-See also the Self-signed builds section in the [README](../README.md) and [SIGNING.md](SIGNING.md).
+## Pacotes do Ghostty não resolvem / submódulo faltando
 
-## Ghostty packages fail to resolve / missing submodule
-
-The app depends on `Vendor/libghostty-spm`. After a clone without `--recurse-submodules`:
+O app depende de `Vendor/libghostty-spm`. Depois de um clone sem `--recurse-submodules`:
 
 ```bash
 git submodule update --init --recursive
 ```
 
-Then reopen `Termac.xcodeproj` and build the **termac** scheme.
+Reabra o `Termac.xcodeproj` e build o scheme **Termac**.
 
-## Stale libghostty after a submodule bump
+## libghostty desatualizado após bump do submódulo
 
-If the binary framework looks wrong after updating `Vendor/libghostty-spm`, clean DerivedData for the project (or Product → Clean Build Folder in Xcode) and rebuild.
+Se o binary framework parecer errado depois de atualizar `Vendor/libghostty-spm`, limpe o DerivedData do projeto (ou Product → Clean Build Folder no Xcode) e build de novo.
 
-## Shells fail / no PTY
+## Ícone antigo no Dock/Finder
 
-App sandbox must stay **off** (`ENABLE_APP_SANDBOX = NO`). Termac uses Ghostty’s `.exec` backend to spawn a real login shell; enabling the sandbox breaks that.
+O macOS cacheia ícones agressivamente. Após trocar o ícone do app:
+
+```bash
+killall Dock
+```
+
+## Shells falham / sem PTY
+
+O App Sandbox precisa ficar **off** (`ENABLE_APP_SANDBOX = NO`). O Termac usa o backend `.exec` do Ghostty para spawnar uma shell de login real; ligar o sandbox quebra isso.

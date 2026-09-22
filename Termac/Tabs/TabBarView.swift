@@ -42,7 +42,8 @@ struct TabBarView: View {
                             isSelected: session.id == tabs.selectedID,
                             fillsWidth: false,
                             onSelect: { tabs.select(session.id) },
-                            onClose: { tabs.close(session) }
+                            onClose: { tabs.close(session) },
+                            onTogglePin: { tabs.togglePin(session) }
                         )
                         .id(session.id)
                     }
@@ -111,15 +112,15 @@ struct TabBarView: View {
             AgentMenu(tabs: tabs)
 
             ChromeButton(
-                systemName: "gearshape",
+                systemName: settings.settingsIconSymbol,
                 help: "Settings",
-                iconSize: settings.headerSize.buttonIconSize * headerScale,
+                iconSize: settings.headerSize.actionIconSize * settings.actionIconScale * headerScale,
                 frameWidth: settings.headerSize.buttonFrameWidth * headerScale,
                 frameHeight: settings.headerSize.buttonFrameHeight * headerScale
             ) {
                 openSettings()
             }
-            .padding(.leading, 6)
+            .padding(.leading, 12)
             .padding(.trailing, 6)
         }
         .frame(height: settings.headerSize.barHeight * headerScale)

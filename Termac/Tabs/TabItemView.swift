@@ -12,13 +12,28 @@ struct TabItemView: View {
     let onSelect: () -> Void
     let onClose: () -> Void
 
+    let onTogglePin: () -> Void
+
     @ObservedObject private var settings = AppSettings.shared
     @Environment(\.headerScale) private var headerScale
     @State private var isCloseHovered = false
     @State private var isHovered = false
+    @State private var isRenaming = false
+    @State private var draftTitle = ""
+
+    /// Agent color launched in this tab, if any; tints the whole chip.
+    private var agentColor: Color? {
+        session.agentColorHex.map { Color(hex: $0) }
+    }
 
     /// Selected > hovered > idle background tint for the tab chip.
+    /// An agent color replaces the neutral tint.
     private var backgroundFill: Color {
+        if let agentColor {
+            if isSelected { return agentColor.opacity(0.38) }
+            if isHovered { return agentColor.opacity(0.24) }
+            return agentColor.opacity(0.16)
+        }
         if isSelected { return Color.primary.opacity(0.15) }
         if isHovered { return Color.primary.opacity(0.08) }
         return Color.clear
@@ -26,13 +41,13 @@ struct TabItemView: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            Image(systemName: session.agentIcon?.symbolName ?? "terminal")
+            Image(systemName: session.isPinned ? "pin.fill" : "terminal")
                 .font(.system(size: settings.headerSize.tabIconSize * headerScale))
                 .frame(
                     width: settings.headerSize.tabIconSize * headerScale,
                     height: settings.headerSize.tabIconSize * headerScale
                 )
-                .foregroundStyle(session.agentIcon?.color ?? .secondary)
+                .foregroundStyle(session.isPinned ? Color.orange : .secondary)
 
             Text(session.title)
                 .lineLimit(1)
@@ -81,7 +96,22 @@ struct TabItemView: View {
             }
         }
         .contextMenu {
+            Button("Rename Tab…") {
+                draftTitle = session.customTitle ?? ""
+                isRenaming = true
+            }
+            Button(session.isPinned ? "Unpin Tab" : "Pin Tab", action: onTogglePin)
+            Divider()
             Button("Close Tab", action: onClose)
+        }
+        .alert("Rename Tab", isPresented: $isRenaming) {
+            TextField("Name", text: $draftTitle)
+            Button("Cancel", role: .cancel) {}
+            Button("Rename") {
+                session.applyCustomTitle(draftTitle)
+            }
+        } message: {
+            Text("Leave empty to restore the automatic title.")
         }
     }
 }

@@ -50,15 +50,15 @@ struct TopChromeBar: View {
             AgentMenu(tabs: tabs)
 
             ChromeButton(
-                systemName: "gearshape",
+                systemName: settings.settingsIconSymbol,
                 help: "Settings",
-                iconSize: settings.headerSize.buttonIconSize * headerScale,
+                iconSize: settings.headerSize.actionIconSize * settings.actionIconScale * headerScale,
                 frameWidth: settings.headerSize.buttonFrameWidth * headerScale,
                 frameHeight: settings.headerSize.buttonFrameHeight * headerScale
             ) {
                 openSettings()
             }
-            .padding(.leading, 6)
+            .padding(.leading, 12)
             .padding(.trailing, 6)
         }
         .frame(height: settings.headerSize.barHeight * headerScale)

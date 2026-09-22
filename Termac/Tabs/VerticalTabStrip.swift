@@ -50,7 +50,8 @@ struct VerticalTabStrip: View {
                                     isSelected: session.id == tabs.selectedID,
                                     fillsWidth: true,
                                     onSelect: { tabs.select(session.id) },
-                                    onClose: { tabs.close(session) }
+                                    onClose: { tabs.close(session) },
+                                    onTogglePin: { tabs.togglePin(session) }
                                 )
                                 .id(session.id)
                             }

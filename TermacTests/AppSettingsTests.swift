@@ -97,6 +97,51 @@ struct AppSettingsTests {
         #expect(settings.uiZoom == 80)
     }
 
+    @Test func chromeIconsRoundTripThroughConfig() throws {
+        let url = try makeTempConfigURL()
+        defer { cleanup(url) }
+
+        let settings = makeSettings(configURL: url)
+        settings.agentsIconSymbol = "sparkles"
+        settings.settingsIconSymbol = "gearshape"
+        settings.actionIconScale = 1.35
+        #expect(try TermacConfigStore.load(from: url).agentsMenuIcon == "sparkles")
+
+        var config = try TermacConfigStore.load(from: url)
+        config.agentsMenuIcon = "terminal"
+        config.actionIconScale = 0.8
+        try TermacConfigStore.save(config, to: url)
+        settings.reloadFromDisk()
+        #expect(settings.agentsIconSymbol == "terminal")
+        #expect(settings.settingsIconSymbol == "gearshape")
+        #expect(settings.actionIconScale == 0.8)
+    }
+
+    @Test func chromeIconsSanitizeUnknownSymbolsOnLoad() throws {
+        let url = try makeTempConfigURL()
+        defer { cleanup(url) }
+
+        var config = TermacConfigFile.default
+        config.agentsMenuIcon = "not-a-real-symbol"
+        config.settingsMenuIcon = "also-fake"
+        try TermacConfigStore.save(config, to: url)
+
+        let settings = makeSettings(configURL: url)
+        #expect(settings.agentsIconSymbol == ChromeIconOptions.agentsMenu[0])
+        #expect(settings.settingsIconSymbol == ChromeIconOptions.settingsMenu[0])
+    }
+
+    @Test func actionIconScaleClampsToLimits() throws {
+        let url = try makeTempConfigURL()
+        defer { cleanup(url) }
+
+        let settings = makeSettings(configURL: url)
+        settings.actionIconScale = 0.1
+        #expect(settings.actionIconScale == AppSettings.Limits.actionIconScale.lowerBound)
+        settings.actionIconScale = 9
+        #expect(settings.actionIconScale == AppSettings.Limits.actionIconScale.upperBound)
+    }
+
     @Test func terminalPaddingClampsToLimits() throws {
         let url = try makeTempConfigURL()
         defer { cleanup(url) }

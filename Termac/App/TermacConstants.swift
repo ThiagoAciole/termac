@@ -11,7 +11,7 @@ enum TermacConstants {
     static let defaultTerminalHeight: CGFloat = 600
 
     /// Space between the chrome bar and the terminal's first row.
-    static let terminalTopInset: CGFloat = 20
+    static let terminalTopInset: CGFloat = 8
     /// Default width of the left tab rail when vertical tabs are enabled.
     static let verticalTabBarWidth: CGFloat = 180
     static let verticalTabBarMinWidth: CGFloat = 120

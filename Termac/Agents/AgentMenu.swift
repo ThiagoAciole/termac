@@ -5,32 +5,41 @@
 
 import SwiftUI
 
-/// Header "AI agents" dropdown, left of the settings gear.
+/// Header agents dropdown, left of the settings gear. Runs agents added in
+/// Settings → AI Agents in a new tab.
 struct AgentMenu: View {
     @ObservedObject var tabs: TabManager
     @ObservedObject private var settings = AppSettings.shared
-    @ObservedObject private var store = AgentStore.shared
     @Environment(\.headerScale) private var headerScale
     @Environment(\.openSettings) private var openSettings
 
     var body: some View {
         Menu {
-            if store.installed.isEmpty {
-                Text("No AI agents detected")
+            if settings.customAgents.isEmpty {
+                Button("No AI agents added") { openSettings() }
             } else {
-                ForEach(store.installed) { agent in
+                ForEach(settings.customAgents) { agent in
                     Button {
                         tabs.runAgentInNewTab(agent)
                     } label: {
-                        Label(agent.name, systemImage: agent.symbolName)
+                        HStack(spacing: 6) {
+                            Circle()
+                                .fill(agent.color)
+                                .frame(width: 8, height: 8)
+                            Text(agent.name)
+                        }
                     }
+                    .help(agent.command)
                 }
             }
             Divider()
             Button("Manage Agents…") { openSettings() }
         } label: {
-            Image(systemName: "sparkles")
-                .font(.system(size: settings.headerSize.agentMenuIconSize * headerScale, weight: .medium))
+            Image(systemName: settings.agentsIconSymbol)
+                .font(.system(
+                    size: settings.headerSize.actionIconSize * settings.actionIconScale * headerScale,
+                    weight: .medium
+                ))
                 .frame(
                 width: settings.headerSize.buttonFrameWidth * headerScale,
                 height: settings.headerSize.buttonFrameHeight * headerScale
@@ -38,28 +47,8 @@ struct AgentMenu: View {
             .contentShape(Rectangle())
         }
         .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
         .fixedSize()
         .help("AI Agents")
-        .onAppear { store.refresh() }
-    }
-}
-
-/// Colored monogram + name + command, used in the menu and settings.
-struct AgentBadge: View {
-    let agent: CLIAgent
-
-    var body: some View {
-        HStack(spacing: 8) {
-            Text(agent.monogram)
-                .font(.system(size: 10, weight: .bold))
-                .foregroundStyle(.white)
-                .frame(width: 18, height: 18)
-                .background(Circle().fill(agent.color))
-            Text(agent.name)
-            Spacer(minLength: 12)
-            Text(agent.command)
-                .foregroundStyle(.secondary)
-                .font(.caption.monospaced())
-        }
     }
 }

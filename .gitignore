@@ -4,6 +4,7 @@
 .build/
 DerivedData/
 build/
+build-dmg-derived/
 .swiftpm/
 
 # Xcode per-user state

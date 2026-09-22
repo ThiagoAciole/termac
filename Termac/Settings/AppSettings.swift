@@ -32,7 +32,15 @@ final class AppSettings: ObservableObject {
         static let verticalTabBarWidth = Int(TermacConstants.verticalTabBarWidth)
         static let headerSize = HeaderSizeSetting.regular
         static let uiZoom = 100.0
-        static let customAgents: [CustomAgent] = []
+        static let agentsIconSymbol = "command"
+        static let settingsIconSymbol = "text.justify"
+        static let actionIconScale = 1.0
+        static let customAgents: [CustomAgent] = [
+            CustomAgent(name: "Tompero", command: "tompero start-day", colorHex: "#8E8E93"),
+            CustomAgent(name: "Claude Code", command: "claude", colorHex: "#D97757"),
+            CustomAgent(name: "Codex", command: "codex", colorHex: "#10A37F"),
+            CustomAgent(name: "OpenCode", command: "opencode", colorHex: "#3B82F6"),
+        ]
     }
 
     enum Limits {
@@ -45,6 +53,7 @@ final class AppSettings: ObservableObject {
         static let verticalTabBarWidth =
             Int(TermacConstants.verticalTabBarMinWidth)...Int(TermacConstants.verticalTabBarMaxWidth)
         static let uiZoom = 50.0...200.0
+        static let actionIconScale = 0.7...1.6
     }
 
     @Published var theme: String {
@@ -86,6 +95,35 @@ final class AppSettings: ObservableObject {
         didSet {
             guard !isLoading else { return }
             schedulePersist()
+        }
+    }
+
+    /// SF Symbol shown by the agents menu trigger.
+    @Published var agentsIconSymbol: String {
+        didSet {
+            guard !isLoading else { return }
+            persistAndNotify()
+        }
+    }
+
+    /// SF Symbol shown by the settings chrome button.
+    @Published var settingsIconSymbol: String {
+        didSet {
+            guard !isLoading else { return }
+            persistAndNotify()
+        }
+    }
+
+    /// Multiplier over the header size's action glyph size (see `HeaderSizeSetting.actionIconSize`).
+    @Published var actionIconScale: Double {
+        didSet {
+            guard !isLoading else { return }
+            let clamped = Self.clamp(actionIconScale, to: Limits.actionIconScale)
+            if clamped != actionIconScale {
+                actionIconScale = clamped
+                return
+            }
+            persistAndNotify()
         }
     }
 
@@ -248,6 +286,9 @@ final class AppSettings: ObservableObject {
         showCwdInTabTitle = Defaults.showCwdInTabTitle
         verticalTabs = Defaults.verticalTabs
         verticalTabBarWidth = Defaults.verticalTabBarWidth
+        agentsIconSymbol = Defaults.agentsIconSymbol
+        settingsIconSymbol = Defaults.settingsIconSymbol
+        actionIconScale = Defaults.actionIconScale
 
         apply(Self.loadOrCreate(at: configURL))
         Theme.reloadSelection(theme)
@@ -286,8 +327,8 @@ final class AppSettings: ObservableObject {
         TermacConfigStore.openInEditor(url: configURL)
     }
 
-    func addCustomAgent(name: String, command: String) {
-        let spec = CustomAgent(name: name, command: command)
+    func addCustomAgent(name: String, command: String, colorHex: String = "#8E8E93") {
+        let spec = CustomAgent(name: name, command: command, colorHex: colorHex)
         guard !customAgents.contains(where: { $0.command == spec.command }) else { return }
         customAgents.append(spec)
     }
@@ -328,6 +369,15 @@ final class AppSettings: ObservableObject {
         fontSize = Self.resolvedFontSize(Double(config.font.size))
         fontWeight = FontWeightSetting(rawValue: config.font.weight) ?? .regular
         headerSize = HeaderSizeSetting(rawValue: config.headerSize) ?? .regular
+        agentsIconSymbol = ChromeIconOptions.sanitized(
+            config.agentsMenuIcon,
+            from: ChromeIconOptions.agentsMenu
+        )
+        settingsIconSymbol = ChromeIconOptions.sanitized(
+            config.settingsMenuIcon,
+            from: ChromeIconOptions.settingsMenu
+        )
+        actionIconScale = Self.clamp(config.actionIconScale, to: Limits.actionIconScale)
         uiZoom = Self.clamp(config.zoom, to: Limits.uiZoom)
         customAgents = config.customAgents
         lineHeight = Self.clamp(config.font.lineHeight, to: Limits.lineHeight)
@@ -422,6 +472,9 @@ final class AppSettings: ObservableObject {
             verticalTabs: verticalTabs,
             verticalTabBarWidth: verticalTabBarWidth,
             headerSize: headerSize.rawValue,
+            agentsMenuIcon: agentsIconSymbol,
+            settingsMenuIcon: settingsIconSymbol,
+            actionIconScale: actionIconScale,
             customAgents: customAgents
         )
     }

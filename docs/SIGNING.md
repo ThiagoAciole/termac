@@ -1,35 +1,33 @@
-# Signing
+# Assinatura
 
-Release builds are signed with a **stable self-signed identity** called `Termac Self-Signed`. It is not an Apple Developer ID (no paid Apple account). The same identity is used on every CI release so users can verify the signature.
+Builds de release são assinados com a identidade estável **Termac Self-Signed** (não é Apple Developer ID, não é notarizado). A mesma identidade é usada em toda distribuição para que os usuários possam verificar a assinatura.
 
-**Do not trust the Authority string alone** — anyone can mint a cert with CN `Termac Self-Signed`. Always check the leaf certificate SHA-256 fingerprint:
+**Não confie só no string da Authority** — qualquer um pode criar um certificado com CN `Termac Self-Signed`. Confira sempre o fingerprint SHA-256 da folha:
 
 ```bash
 codesign -dv --verbose=4 Termac.app
-# expect Authority=Termac Self-Signed
+# esperado: Authority=Termac Self-Signed
 codesign --verify --verbose=4 Termac.app
 
 codesign -d --extract-certificates=/tmp/termac-cert Termac.app
 openssl x509 -inform DER -in /tmp/termac-cert0 -noout -fingerprint -sha256
-# expect SHA256 Fingerprint=82:9B:F9:9F:A6:C3:28:64:98:C3:57:24:04:3A:F2:CD:71:4B:35:BD:D1:C2:88:B7:D8:86:B6:C2:DD:E2:2C:11
+# esperado: SHA256 Fingerprint=21:39:A4:00:00:4C:B8:14:D9:D2:30:4D:D3:20:80:4E:78:96:B7:C7:46:59:EF:C4:B5:02:C0:04:79:C8:C6:7B
 rm -f /tmp/termac-cert*
 ```
 
-You create this identity **once**, then export it into two GitHub secrets the release workflow imports. CI verifies the same fingerprint (hardcoded `EXPECTED` in [`.github/workflows/release.yml`](../.github/workflows/release.yml)).
+## Caminho rápido
 
-## Quick path
-
-From the repo root:
+Na raiz do repo:
 
 ```bash
 ./Script/setup-signing.sh
 ```
 
-That creates the identity if missing and prints `gh secret set` commands (or runs them if `gh` is authed for the repo). If the identity already exists, the script prints the fingerprint and instructions to export **only** that identity (it will not bulk-export the keychain).
+Cria a identidade se não existir e imprime os comandos `gh secret set` (ou roda-os se o `gh` estiver autenticado). Se a identidade já existe, o script imprime o fingerprint e instruções para exportar **só** ela (nunca exporta o keychain inteiro).
 
-## 1. Create the identity (once)
+## 1. Criar a identidade (uma vez)
 
-Prefer `./Script/setup-signing.sh`. Manual equivalent:
+Prefira `./Script/setup-signing.sh`. Equivalente manual:
 
 ```sh
 TMP="$(mktemp -d)"
@@ -41,10 +39,9 @@ openssl req -x509 -newkey rsa:2048 -nodes -days 3650 \
   -addext "extendedKeyUsage=critical,codeSigning"
 
 openssl x509 -in "$TMP/cert.pem" -noout -fingerprint -sha256
-# If rotating: update EXPECTED in .github/workflows/release.yml and the fingerprint
-# shown in the README / this doc.
+# Se rotacionar: atualize o fingerprint nos docs (README / TROUBLESHOOTING / aqui).
 
-# OpenSSL 3 defaults break macOS `security import` — use classic PBE.
+# Defaults do OpenSSL 3 quebram o `security import` do macOS — use PBE clássico.
 LOCAL_PASS="$(openssl rand -hex 12)"
 openssl pkcs12 -export -inkey "$TMP/key.pem" -in "$TMP/cert.pem" \
   -name "Termac Self-Signed" -out "$TMP/termac.p12" -passout "pass:${LOCAL_PASS}" \
@@ -56,29 +53,38 @@ security import "$TMP/termac.p12" -k ~/Library/Keychains/login.keychain-db \
 rm -rf "$TMP"
 ```
 
-Verify:
+Verificar:
 
 ```sh
 security find-identity -p codesigning | grep "Termac Self-Signed"
 ```
 
-## 2. GitHub secrets for CI
+## 2. Gerar o DMG assinado
 
-Export **only** the Termac identity (Keychain Access → select `Termac Self-Signed` → File → Export Items… as PKCS#12). Do **not** run `security export -t identities` on the whole login keychain — that can pack unrelated private keys into the secret.
+```bash
+./Script/make-dmg.sh          # build Release + assina + empacota
+./Script/make-dmg.sh --skip-build   # reempacota o build atual
+```
+
+O script assina o app com a identidade, monta o volume com o `Termac.app` + link `/Applications`, cria `dist/Termac-<versão>.dmg` e remonta o DMG para verificar a assinatura.
+
+## 3. Segredos de CI (quando houver workflow)
+
+Exporte **só** a identidade Termac (Keychain Access → selecione `Termac Self-Signed` → File → Export Items… como PKCS#12). **Não** rode `security export -t identities` no keychain inteiro — isso pode empacotar chaves alheias no secret.
 
 ```sh
 P12_PASSWORD="$(openssl rand -hex 24)"; echo "password: $P12_PASSWORD"
-# Use $P12_PASSWORD in the Keychain Access export dialog, then:
-base64 -i /path/to/Termac.p12 | tr -d '\n' > /tmp/signing.p12.base64
-rm -f /path/to/Termac.p12
+# use a senha no diálogo de exportação do Keychain Access, então:
+base64 -i /caminho/Termac.p12 | tr -d '\n' > /tmp/signing.p12.base64
+rm -f /caminho/Termac.p12
 
 gh secret set SIGNING_P12_BASE64 < /tmp/signing.p12.base64
 gh secret set SIGNING_P12_PASSWORD --body "$P12_PASSWORD"
 rm -f /tmp/signing.p12.base64
 ```
 
-If you lose the secrets but still have the identity in your keychain, re-export **that identity only** (this section). If you lose the identity entirely, recreate it (step 1), update the fingerprint in the release workflow / README / this doc, then re-do secrets — the Authority string stays `Termac Self-Signed`, but it is a new key.
+Perdeu os secrets mas a identidade ainda está no keychain? Re-exporte **só ela** (seção 3). Perdeu a identidade inteira? Recrie (seção 1), atualize o fingerprint nos docs e refaça os secrets — a Authority continua `Termac Self-Signed`, mas é uma chave nova.
 
 ## Quarantine
 
-Self-signing does not satisfy Gatekeeper for downloads. Homebrew clears quarantine in cask `postflight` — see [HOMEBREW.md](HOMEBREW.md). Manual installs: [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
+Self-signing não satisfaz o Gatekeeper para downloads. O cask do Homebrew limpa o quarantine no `postflight` — [HOMEBREW.md](HOMEBREW.md). Instalação manual: [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
