@@ -62,6 +62,15 @@ enum HeaderSizeSetting: String, CaseIterable, Identifiable {
     }
 
     /// Chrome button hit area.
+    /// AI agents menu glyph size, slightly larger than the other chrome icons.
+    var agentMenuIconSize: CGFloat {
+        switch self {
+        case .compact: return 18
+        case .regular: return 20
+        case .large: return 22
+        }
+    }
+
     var buttonFrameWidth: CGFloat {
         switch self {
         case .compact: return 30
@@ -88,9 +97,9 @@ enum HeaderSizeSetting: String, CaseIterable, Identifiable {
     }
 
     /// Dynamic scale derived from the window width so the header grows with the
-    /// window (clamped to stay legible on small windows and not oversized full-screen).
+    /// window (clamped to stay legible on small windows and comfortable full-screen).
     static func scale(forWidth width: CGFloat) -> CGFloat {
-        min(max(width / 800, 0.9), 1.5)
+        min(max(width / 800, 0.9), 1.15)
     }
 }
 

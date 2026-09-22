@@ -26,9 +26,13 @@ struct TabItemView: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            Image(systemName: "terminal")
-                .font(.system(size: settings.headerSize.tabIconSize * headerScale, weight: .medium))
-                .foregroundStyle(.secondary)
+            Image(systemName: session.agentIcon?.symbolName ?? "terminal")
+                .font(.system(size: settings.headerSize.tabIconSize * headerScale))
+                .frame(
+                    width: settings.headerSize.tabIconSize * headerScale,
+                    height: settings.headerSize.tabIconSize * headerScale
+                )
+                .foregroundStyle(session.agentIcon?.color ?? .secondary)
 
             Text(session.title)
                 .lineLimit(1)

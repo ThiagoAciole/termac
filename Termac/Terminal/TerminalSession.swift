@@ -15,7 +15,10 @@ final class TerminalSession: NSObject, ObservableObject, Identifiable {
     let id = UUID()
 
     @Published var title: String
+    @Published private(set) var agentIcon: TabAgentIcon?
     @Published var hasExited = false
+
+    private(set) var pendingAgentCommand: String?
 
     let terminalView: AppTerminalView
 
@@ -23,7 +26,6 @@ final class TerminalSession: NSObject, ObservableObject, Identifiable {
     private let launchCommand: String
     private let shellName: String
     /// Temporary per-tab size; nil means use Settings. Never persisted.
-    private var fontSizeOverride: Double?
     /// Last OSC 7 path from the surface when the shell emits it.
     private var reportedWorkingDirectory: String?
     /// PTY foreground pid while idle at the shell prompt; used to detect a
@@ -39,9 +41,9 @@ final class TerminalSession: NSObject, ObservableObject, Identifiable {
     var onExited: ((TerminalSession) -> Void)?
 
     var effectiveFontSize: Double {
-        FontZoom.effective(
+        ZoomSetting.resolvedFontSize(
             base: AppSettings.shared.fontSize,
-            override: fontSizeOverride
+            zoomPercent: AppSettings.shared.uiZoom
         )
     }
 
@@ -170,13 +172,8 @@ final class TerminalSession: NSObject, ObservableObject, Identifiable {
         startTitlePolling()
     }
 
-    /// Reconfigures libghostty when theme or font settings change.
-    /// Pass `clearFontZoom: true` on Settings refresh so tabs adopt the new
-    /// Settings size instead of keeping a temporary ⌘+/− override.
-    func applyAppearance(clearFontZoom: Bool = false) {
-        if clearFontZoom {
-            fontSizeOverride = nil
-        }
+    /// Reconfigures libghostty when theme, font, or zoom settings change.
+    func applyAppearance() {
         _ = controller.setTerminalConfiguration(
             TermacTerminalConfig.terminalConfiguration(
                 command: launchCommand,
@@ -185,28 +182,6 @@ final class TerminalSession: NSObject, ObservableObject, Identifiable {
         )
         _ = controller.setTheme(TermacTerminalConfig.ghosttyTheme())
         controller.setColorScheme(Theme.isDark ? .dark : .light)
-    }
-
-    func increaseFontSize() {
-        fontSizeOverride = FontZoom.increased(
-            base: AppSettings.shared.fontSize,
-            override: fontSizeOverride
-        )
-        applyAppearance()
-    }
-
-    func decreaseFontSize() {
-        fontSizeOverride = FontZoom.decreased(
-            base: AppSettings.shared.fontSize,
-            override: fontSizeOverride
-        )
-        applyAppearance()
-    }
-
-    func resetFontSize() {
-        guard fontSizeOverride != nil else { return }
-        fontSizeOverride = nil
-        applyAppearance()
     }
 
     func performFindSearch(_ query: String) {
@@ -225,6 +200,16 @@ final class TerminalSession: NSObject, ObservableObject, Identifiable {
         _ = terminalView.performBindingAction(TerminalFind.end)
     }
 
+    /// Runs a command now when the surface exists, or queues it until attach.
+    func runCommandWhenReady(_ command: String) {
+        guard !command.isEmpty else { return }
+        if terminalView.paste(text: command) {
+            terminalView.sendKey(.enter)
+        } else {
+            pendingAgentCommand = command
+        }
+    }
+
     /// Pastes a command into the shell and presses Enter, so it runs in the
     /// shell's current working directory (text → paste path, Enter → key path).
     func runCommand(_ command: String) {
@@ -232,6 +217,12 @@ final class TerminalSession: NSObject, ObservableObject, Identifiable {
         terminalView.acquireProgrammaticFocus()
         terminalView.paste(text: command)
         terminalView.sendKey(.enter)
+    }
+
+    private func runPendingCommandIfNeeded() {
+        guard let command = pendingAgentCommand else { return }
+        pendingAgentCommand = nil
+        runCommand(command)
     }
 
     /// Tears down the surface when the host is already closing the tab.
@@ -274,6 +265,10 @@ final class TerminalSession: NSObject, ObservableObject, Identifiable {
     private func refreshTitleFromForeground() {
         let foreground = terminalView.foregroundPid
         let name = foreground.flatMap(Self.processName(for:))
+        let detectedAgent = TabAgentIcon.match(processName: name)
+        if agentIcon != detectedAgent {
+            agentIcon = detectedAgent
+        }
         let result = Self.hasRunningCommand(
             foregroundPid: foreground,
             foregroundName: name,
@@ -322,6 +317,14 @@ final class TerminalSession: NSObject, ObservableObject, Identifiable {
 }
 
 // MARK: - libghostty surface callbacks
+
+extension TerminalSession: TerminalSurfaceLifecycleDelegate {
+    func terminalDidAttachSurface(_: TerminalSurface) {
+        runPendingCommandIfNeeded()
+    }
+
+    func terminalDidDetachSurface() {}
+}
 
 extension TerminalSession: TerminalSurfaceTitleDelegate {
     func terminalDidChangeTitle(_ title: String) {

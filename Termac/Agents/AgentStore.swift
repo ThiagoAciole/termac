@@ -13,6 +13,16 @@ final class AgentStore: ObservableObject {
 
     @Published private(set) var installed: [CLIAgent] = []
 
+    private var cancellables = Set<AnyCancellable>()
+
+    init(settings: AppSettings = .shared) {
+        settings.$customAgents
+            .sink { [weak self] _ in
+                self?.refresh()
+            }
+            .store(in: &cancellables)
+    }
+
     func refresh() {
         installed = AgentDetector.detectedAgents(custom: AppSettings.shared.customAgents)
     }

@@ -43,6 +43,7 @@ private struct WindowRootView: View {
 private struct TermacCommands: Commands {
     @Environment(\.openWindow) private var openWindow
     @FocusedObject private var tabs: TabManager?
+    @ObservedObject private var settings = AppSettings.shared
 
     var body: some Commands {
         CommandGroup(replacing: .newItem) {
@@ -112,20 +113,20 @@ private struct TermacCommands: Commands {
         }
 
         CommandMenu("View") {
-            Button("Larger") {
-                tabs?.increaseFontSize()
+            Button("Zoom In") {
+                tabs?.increaseZoom()
             }
             .keyboardShortcut("=", modifiers: .command)
             .disabled(tabs == nil)
 
-            Button("Smaller") {
-                tabs?.decreaseFontSize()
+            Button("Zoom Out") {
+                tabs?.decreaseZoom()
             }
             .keyboardShortcut("-", modifiers: .command)
             .disabled(tabs == nil)
 
-            Button("Actual Size") {
-                tabs?.resetFontSize()
+            Button("Actual Size (\(Int(settings.uiZoom))%)") {
+                tabs?.resetZoom()
             }
             .keyboardShortcut("0", modifiers: .command)
             .disabled(tabs == nil)

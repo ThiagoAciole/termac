@@ -39,6 +39,7 @@ struct AppSettingsTests {
         #expect(settings.showCwdInTabTitle == AppSettings.Defaults.showCwdInTabTitle)
         #expect(settings.verticalTabs == AppSettings.Defaults.verticalTabs)
         #expect(settings.verticalTabBarWidth == AppSettings.Defaults.verticalTabBarWidth)
+        #expect(settings.uiZoom == AppSettings.Defaults.uiZoom)
         #expect(settings.fontSize == Double(TerminalFont.defaultSize))
         #expect(FileManager.default.fileExists(atPath: url.path))
     }
@@ -68,6 +69,32 @@ struct AppSettingsTests {
         #expect(settings.fontSize == AppSettings.Limits.fontSize.lowerBound)
         settings.fontSize = 100
         #expect(settings.fontSize == AppSettings.Limits.fontSize.upperBound)
+    }
+
+    @Test func zoomClampsToLimits() throws {
+        let url = try makeTempConfigURL()
+        defer { cleanup(url) }
+
+        let settings = makeSettings(configURL: url)
+        settings.uiZoom = 1
+        #expect(settings.uiZoom == AppSettings.Limits.uiZoom.lowerBound)
+        settings.uiZoom = 999
+        #expect(settings.uiZoom == AppSettings.Limits.uiZoom.upperBound)
+    }
+
+    @Test func zoomPersistsAndReloads() throws {
+        let url = try makeTempConfigURL()
+        defer { cleanup(url) }
+
+        let settings = makeSettings(configURL: url)
+        settings.uiZoom = 130
+        #expect(try TermacConfigStore.load(from: url).zoom == 130)
+
+        var config = try TermacConfigStore.load(from: url)
+        config.zoom = 80
+        try TermacConfigStore.save(config, to: url)
+        settings.reloadFromDisk()
+        #expect(settings.uiZoom == 80)
     }
 
     @Test func terminalPaddingClampsToLimits() throws {

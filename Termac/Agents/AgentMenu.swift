@@ -20,9 +20,9 @@ struct AgentMenu: View {
             } else {
                 ForEach(store.installed) { agent in
                     Button {
-                        tabs.runAgent(agent)
+                        tabs.runAgentInNewTab(agent)
                     } label: {
-                        AgentBadge(agent: agent)
+                        Label(agent.name, systemImage: agent.symbolName)
                     }
                 }
             }
@@ -30,12 +30,12 @@ struct AgentMenu: View {
             Button("Manage Agents…") { openSettings() }
         } label: {
             Image(systemName: "sparkles")
-                .font(.system(size: settings.headerSize.buttonIconSize * headerScale, weight: .medium))
+                .font(.system(size: settings.headerSize.agentMenuIconSize * headerScale, weight: .medium))
                 .frame(
-                    width: settings.headerSize.buttonFrameWidth * headerScale,
-                    height: settings.headerSize.buttonFrameHeight * headerScale
-                )
-                .contentShape(Rectangle())
+                width: settings.headerSize.buttonFrameWidth * headerScale,
+                height: settings.headerSize.buttonFrameHeight * headerScale
+            )
+            .contentShape(Rectangle())
         }
         .menuStyle(.borderlessButton)
         .fixedSize()

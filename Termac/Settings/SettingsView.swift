@@ -6,8 +6,50 @@
 import SwiftUI
 
 struct SettingsView: View {
-    @ObservedObject private var settings = AppSettings.shared
     @State private var showingShortcuts = false
+
+    var body: some View {
+        TabView {
+            AppearanceSettingsView()
+                .tabItem {
+                    Label("Aparência", systemImage: "paintbrush")
+                }
+
+            WindowSettingsView()
+                .tabItem {
+                    Label("Janela", systemImage: "macwindow")
+                }
+
+            HeaderSettingsView()
+                .tabItem {
+                    Label("Header", systemImage: "rectangle.topthird.inset.filled")
+                }
+
+            AgentsSettingsView()
+                .tabItem {
+                    Label("Agentes IA", systemImage: "sparkles")
+                }
+
+            ShortcutsSettingsView(showingShortcuts: $showingShortcuts)
+                .tabItem {
+                    Label("Atalhos", systemImage: "keyboard")
+                }
+
+            ConfigurationSettingsView()
+                .tabItem {
+                    Label("Configuração", systemImage: "gearshape")
+                }
+        }
+        .frame(width: 440, height: 780)
+        .padding(8)
+        .sheet(isPresented: $showingShortcuts) {
+            ShortcutsView()
+        }
+    }
+}
+
+private struct AppearanceSettingsView: View {
+    @ObservedObject private var settings = AppSettings.shared
 
     var body: some View {
         Form {
@@ -76,6 +118,30 @@ struct SettingsView: View {
                 }
             }
 
+            Section("Zoom") {
+                LabeledContent("Interface and terminal") {
+                    HStack(spacing: 8) {
+                        Text("\(Int(settings.uiZoom))%")
+                            .monospacedDigit()
+                            .frame(width: 48, alignment: .trailing)
+                        Slider(
+                            value: $settings.uiZoom,
+                            in: AppSettings.Limits.uiZoom,
+                            step: ZoomSetting.step
+                        )
+                    }
+                }
+            }
+        }
+        .formStyle(.grouped)
+    }
+}
+
+private struct WindowSettingsView: View {
+    @ObservedObject private var settings = AppSettings.shared
+
+    var body: some View {
+        Form {
             Section("Window") {
                 Toggle(
                     "Confirm before closing tabs with a running command",
@@ -159,7 +225,16 @@ struct SettingsView: View {
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
+        }
+        .formStyle(.grouped)
+    }
+}
 
+private struct HeaderSettingsView: View {
+    @ObservedObject private var settings = AppSettings.shared
+
+    var body: some View {
+        Form {
             Section("Header") {
                 Picker("Size", selection: $settings.headerSize) {
                     ForEach(HeaderSizeSetting.allCases) { size in
@@ -167,17 +242,42 @@ struct SettingsView: View {
                     }
                 }
             }
+        }
+        .formStyle(.grouped)
+    }
+}
 
+private struct AgentsSettingsView: View {
+    var body: some View {
+        Form {
             Section("AI Agents") {
                 AgentSettingsSection()
             }
+        }
+        .formStyle(.grouped)
+    }
+}
 
+private struct ShortcutsSettingsView: View {
+    @Binding var showingShortcuts: Bool
+
+    var body: some View {
+        Form {
             Section("Keyboard Shortcuts") {
                 Button("View Keyboard Shortcuts…") {
                     showingShortcuts = true
                 }
             }
+        }
+        .formStyle(.grouped)
+    }
+}
 
+private struct ConfigurationSettingsView: View {
+    @ObservedObject private var settings = AppSettings.shared
+
+    var body: some View {
+        Form {
             Section("Configuration") {
                 Button("Open Configuration…") {
                     settings.openConfigFile()
@@ -185,10 +285,5 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 440, height: 780)
-        .padding(8)
-        .sheet(isPresented: $showingShortcuts) {
-            ShortcutsView()
-        }
     }
 }

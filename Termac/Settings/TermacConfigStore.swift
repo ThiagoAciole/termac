@@ -145,6 +145,8 @@ struct TermacConfigFile: Codable, Equatable {
     var theme: String
     var font: Font
     var window: Window
+    /// Global percentage zoom shared by terminal text and tab chrome.
+    var zoom: Double
     /// When true, closing a tab with a foreground process prompts for confirmation.
     var confirmCloseRunningCommand: Bool
     /// When true, tab titles are prefixed with the cwd basename (`dir - node`).
@@ -162,6 +164,7 @@ struct TermacConfigFile: Codable, Equatable {
         case theme
         case font
         case window
+        case zoom
         case confirmCloseRunningCommand = "confirm_close_running_command"
         case showCwdInTabTitle = "show_cwd_in_tab_title"
         case verticalTabs = "vertical_tabs"
@@ -175,6 +178,7 @@ struct TermacConfigFile: Codable, Equatable {
             theme: Theme.defaultDarkThemeName,
             font: .default,
             window: .default,
+            zoom: AppSettings.Defaults.uiZoom,
             confirmCloseRunningCommand: AppSettings.Defaults.confirmCloseRunningCommand,
             showCwdInTabTitle: AppSettings.Defaults.showCwdInTabTitle,
             verticalTabs: AppSettings.Defaults.verticalTabs,
@@ -188,6 +192,7 @@ struct TermacConfigFile: Codable, Equatable {
         theme: String,
         font: Font,
         window: Window,
+        zoom: Double = AppSettings.Defaults.uiZoom,
         confirmCloseRunningCommand: Bool = AppSettings.Defaults.confirmCloseRunningCommand,
         showCwdInTabTitle: Bool = AppSettings.Defaults.showCwdInTabTitle,
         verticalTabs: Bool = AppSettings.Defaults.verticalTabs,
@@ -198,6 +203,7 @@ struct TermacConfigFile: Codable, Equatable {
         self.theme = theme
         self.font = font
         self.window = window
+        self.zoom = zoom
         self.confirmCloseRunningCommand = confirmCloseRunningCommand
         self.showCwdInTabTitle = showCwdInTabTitle
         self.verticalTabs = verticalTabs
@@ -206,12 +212,28 @@ struct TermacConfigFile: Codable, Equatable {
         self.customAgents = customAgents
     }
 
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(theme, forKey: .theme)
+        try container.encode(font, forKey: .font)
+        try container.encode(window, forKey: .window)
+        try container.encode(TwoDecimalFloat(zoom), forKey: .zoom)
+        try container.encode(confirmCloseRunningCommand, forKey: .confirmCloseRunningCommand)
+        try container.encode(showCwdInTabTitle, forKey: .showCwdInTabTitle)
+        try container.encode(verticalTabs, forKey: .verticalTabs)
+        try container.encode(verticalTabBarWidth, forKey: .verticalTabBarWidth)
+        try container.encode(headerSize, forKey: .headerSize)
+        try container.encode(customAgents, forKey: .customAgents)
+    }
+
     init(from decoder: Decoder) throws {
         let defaults = TermacConfigFile.default
         let container = try decoder.container(keyedBy: CodingKeys.self)
         theme = try container.decodeIfPresent(String.self, forKey: .theme) ?? defaults.theme
         font = try container.decodeIfPresent(Font.self, forKey: .font) ?? defaults.font
         window = try container.decodeIfPresent(Window.self, forKey: .window) ?? defaults.window
+        zoom = try container.decodeIfPresent(TwoDecimalFloat.self, forKey: .zoom)?.value
+            ?? defaults.zoom
         confirmCloseRunningCommand = try container.decodeIfPresent(
             Bool.self,
             forKey: .confirmCloseRunningCommand

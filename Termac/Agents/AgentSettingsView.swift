@@ -43,6 +43,9 @@ struct AgentSettingsSection: View {
                 .foregroundStyle(.secondary)
         }
         .onAppear { store.refresh() }
+        .onChange(of: settings.customAgents) { _, _ in
+            store.refresh()
+        }
     }
 }
 

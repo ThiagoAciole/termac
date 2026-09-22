@@ -31,6 +31,7 @@ final class AppSettings: ObservableObject {
         static let verticalTabs = false
         static let verticalTabBarWidth = Int(TermacConstants.verticalTabBarWidth)
         static let headerSize = HeaderSizeSetting.regular
+        static let uiZoom = 100.0
         static let customAgents: [CustomAgent] = []
     }
 
@@ -43,6 +44,7 @@ final class AppSettings: ObservableObject {
         static let windowRows = 5...200
         static let verticalTabBarWidth =
             Int(TermacConstants.verticalTabBarMinWidth)...Int(TermacConstants.verticalTabBarMaxWidth)
+        static let uiZoom = 50.0...200.0
     }
 
     @Published var theme: String {
@@ -84,6 +86,18 @@ final class AppSettings: ObservableObject {
         didSet {
             guard !isLoading else { return }
             schedulePersist()
+        }
+    }
+
+    @Published var uiZoom: Double {
+        didSet {
+            guard !isLoading else { return }
+            let clamped = Self.clamp(uiZoom, to: Limits.uiZoom)
+            if clamped != uiZoom {
+                uiZoom = clamped
+                return
+            }
+            persistAndNotify()
         }
     }
 
@@ -222,6 +236,7 @@ final class AppSettings: ObservableObject {
         fontSize = Double(TerminalFont.defaultSize)
         fontWeight = .regular
         headerSize = Defaults.headerSize
+        uiZoom = Defaults.uiZoom
         customAgents = Defaults.customAgents
         lineHeight = Defaults.lineHeight
         terminalPadding = Defaults.terminalPadding
@@ -281,6 +296,18 @@ final class AppSettings: ObservableObject {
         customAgents.removeAll { $0.command == spec.command }
     }
 
+    func increaseZoom() {
+        uiZoom = ZoomSetting.increased(uiZoom)
+    }
+
+    func decreaseZoom() {
+        uiZoom = ZoomSetting.decreased(uiZoom)
+    }
+
+    func resetZoom() {
+        uiZoom = Defaults.uiZoom
+    }
+
     /// Apply chrome light/dark from the selected theme once AppKit exists.
     func applyAppAppearance() {
         NSApp?.appearance = NSAppearance(
@@ -301,6 +328,7 @@ final class AppSettings: ObservableObject {
         fontSize = Self.resolvedFontSize(Double(config.font.size))
         fontWeight = FontWeightSetting(rawValue: config.font.weight) ?? .regular
         headerSize = HeaderSizeSetting(rawValue: config.headerSize) ?? .regular
+        uiZoom = Self.clamp(config.zoom, to: Limits.uiZoom)
         customAgents = config.customAgents
         lineHeight = Self.clamp(config.font.lineHeight, to: Limits.lineHeight)
         terminalPadding = Self.clamp(config.window.padding, to: Limits.terminalPadding)
@@ -388,6 +416,7 @@ final class AppSettings: ObservableObject {
                 columns: windowColumns,
                 rows: windowRows
             ),
+            zoom: uiZoom,
             confirmCloseRunningCommand: confirmCloseRunningCommand,
             showCwdInTabTitle: showCwdInTabTitle,
             verticalTabs: verticalTabs,

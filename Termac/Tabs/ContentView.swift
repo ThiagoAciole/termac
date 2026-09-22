@@ -25,6 +25,7 @@ struct ContentView: View {
             .environment(
                 \.headerScale,
                 HeaderSizeSetting.scale(forWidth: geometry.size.width)
+                    * ZoomSetting.headerFactor(zoomPercent: settings.uiZoom)
             )
         }
     }

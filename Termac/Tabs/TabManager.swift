@@ -197,7 +197,7 @@ final class TabManager: ObservableObject {
 
     func refreshAppearance() {
         for session in sessions {
-            session.applyAppearance(clearFontZoom: true)
+            session.applyAppearance()
         }
     }
 
@@ -207,16 +207,22 @@ final class TabManager: ObservableObject {
         }
     }
 
-    func increaseFontSize() {
-        selectedSession?.increaseFontSize()
+    func increaseZoom() {
+        AppSettings.shared.increaseZoom()
     }
 
-    func decreaseFontSize() {
-        selectedSession?.decreaseFontSize()
+    func decreaseZoom() {
+        AppSettings.shared.decreaseZoom()
     }
 
-    func resetFontSize() {
-        selectedSession?.resetFontSize()
+    func resetZoom() {
+        AppSettings.shared.resetZoom()
+    }
+
+    /// Runs a CLI agent in a new tab, inheriting the selected tab's cwd.
+    func runAgentInNewTab(_ agent: CLIAgent) {
+        newTab(inheritingCwd: true)
+        selectedSession?.runCommandWhenReady(agent.command)
     }
 
     /// Runs a CLI agent in the selected tab's shell (in its current cwd).

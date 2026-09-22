@@ -20,7 +20,10 @@ enum TermacTerminalConfig {
         let sanitized = TerminalFont.sanitizedFamily(settings.fontFamily)
         let family = sanitized.isEmpty
             ? TerminalFont.resolvedDefaultFamily : sanitized
-        let resolvedSize = FontZoom.clamp(fontSize ?? settings.fontSize)
+        let resolvedSize = fontSize ?? ZoomSetting.resolvedFontSize(
+            base: settings.fontSize,
+            zoomPercent: settings.uiZoom
+        )
         return TerminalConfiguration { builder in
             builder.withFontFamily(family)
             builder.withFontSize(Float(resolvedSize))
