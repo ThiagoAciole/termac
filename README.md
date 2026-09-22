@@ -1,57 +1,95 @@
-# Termac
+<p align="center">
+  <img src="images/logo.png" alt="Termac" width="64">
+</p>
+<h1 align="center">Termac</h1>
 
-A native macOS terminal built with SwiftUI and SwiftTerm. Local tabs, splits, and a focused keyboard-driven workflow.
+<p align="center">
+  <img src="images/screenshot.png" alt="Termac" width="640">
+</p>
+
+A simple native macOS terminal built with Swift and [libghostty](https://github.com/Lakr233/libghostty-spm). Minimal be design - suited for everyday use, just not packed with the bells and whistles power users expect.
 
 ## Features
 
-- **Split Panes** — Split horizontally or vertically, drag to resize, zoom into any pane
-- **Tabs** — Multiple tabs per session with session persistence across relaunches
-- **Command Palette** (⌘P) — Fuzzy search across tabs and terminal commands
-- **Terminal Search** (⌘F) — Floating search bar with match navigation
-- **Terminal History** (⇧⌘H) — Browse, search, and export terminal output
-- **Claude Code Integration** — Status notifications inside terminal tabs
-- **Auto-Update** — Built-in Sparkle updates
+- Real PTY shells via Ghostty’s Metal renderer
+- Multi-window and tabs (⌘N / ⌘T / ⌘W, ⌘⇧[ / ⌘⇧])
+- Color themes from the GhosttyTheme catalog
+- Font family, size, weight, and line height
+- Window padding, starting position, and character-grid size
+- In-app keyboard shortcuts sheet (Settings)
 
-## Keyboard Shortcuts
+Full list: [docs/FEATURES.md](docs/FEATURES.md).
 
-| Shortcut | Action |
-|----------|--------|
-| ⌘T | New Tab |
-| ⌘D | Split Right |
-| ⇧⌘D | Split Down |
-| ⌘F | Find in Terminal |
-| ⌘P | Command Palette |
-| ⇧⌘H | Terminal History |
-| ⌘+/⌘- | Font Size |
+## Install
+
+**Homebrew (recommended):**
+
+```bash
+brew trust --tap 0x96f/termac
+brew tap 0x96f/termac
+brew install --cask termac
+```
+
+The cask clears Gatekeeper quarantine on install. Details: [docs/HOMEBREW.md](docs/HOMEBREW.md).
+
+**Manual:**
+
+1. Download `Termac-macos.zip` from the [latest release](https://github.com/0x96f/termac/releases/latest).
+2. Unzip it - you should get `Termac.app`.
+3. Move `Termac.app` somewhere lasting (for example `/Applications` or `~/Applications`).
+4. Open it (see below if macOS blocks the first launch).
+
+## Self-signed builds
+
+Release builds are signed with a stable **Termac Self-Signed** identity (not an Apple Developer ID / not notarized). Verify both the Authority string **and** the leaf SHA-256 fingerprint (CN alone is forgeable):
+
+```bash
+codesign -dv --verbose=4 Termac.app
+# expect Authority=Termac Self-Signed
+codesign --verify --verbose=4 Termac.app
+
+codesign -d --extract-certificates=/tmp/termac-cert Termac.app
+openssl x509 -inform DER -in /tmp/termac-cert0 -noout -fingerprint -sha256
+# expect SHA256 Fingerprint=82:9B:F9:9F:A6:C3:28:64:98:C3:57:24:04:3A:F2:CD:71:4B:35:BD:D1:C2:88:B7:D8:86:B6:C2:DD:E2:2C:11
+rm -f /tmp/termac-cert*
+```
+
+Gatekeeper may still say the app “can’t be opened because it is from an unidentified developer.”
+
+**Recommended:** right-click (or Control-click) `Termac.app` → **Open** → **Open** again in the dialog. You only need to do this once.
+
+**Alternative** (clears the quarantine flag after download):
+
+```bash
+xattr -dr com.apple.quarantine /path/to/Termac.app
+open /path/to/Termac.app
+```
+
+More help: [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md). Maintainers: [docs/SIGNING.md](docs/SIGNING.md).
 
 ## Requirements
 
-- macOS 15.0+
-- Apple Silicon or Intel
+- macOS 15.6+
+- Xcode 16+ (with Swift 5 / macOS SDK) to build from source
 
-## Build from Source
+## Build from source
 
 ```bash
-# Install dependencies
-brew install xcodegen create-dmg
-
-# Generate Xcode project
-xcodegen generate
-
-# Build
-xcodebuild -project Termac.xcodeproj -scheme Termac -configuration Release build
+git clone --recurse-submodules <your-repo-url> termac
+cd termac
+open Termac.xcodeproj
 ```
 
-## Tech Stack
+If you already cloned without submodules:
 
-- **SwiftUI** + **Swift 6.0** — UI and concurrency
-- **[SwiftTerm](https://github.com/migueldeicaza/SwiftTerm)** — Terminal emulation
-- **[Sparkle](https://sparkle-project.org/)** — Auto-update
+```bash
+git submodule update --init --recursive
+```
 
-## Download
+Build and run the **termac** scheme. App sandbox is **off** so Ghostty can spawn a real shell (`.exec`).
 
-Get the latest release from the [Releases](https://github.com/MengnanTech/Termac/releases) page.
+If packages fail to resolve or shells won’t start, see [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md).
 
 ## License
 
-[MIT](LICENSE)
+MIT

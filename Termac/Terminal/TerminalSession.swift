@@ -1,0 +1,371 @@
+//
+//  TerminalSession.swift
+//  termac
+//
+
+import AppKit
+import Combine
+import Darwin
+import Foundation
+import GhosttyTerminal
+
+/// One login shell rendered by one long-lived libghostty surface.
+@MainActor
+final class TerminalSession: NSObject, ObservableObject, Identifiable {
+    let id = UUID()
+
+    @Published var title: String
+    @Published var hasExited = false
+
+    let terminalView: AppTerminalView
+
+    private let controller: TerminalController
+    private let launchCommand: String
+    private let shellName: String
+    /// Temporary per-tab size; nil means use Settings. Never persisted.
+    private var fontSizeOverride: Double?
+    /// Last OSC 7 path from the surface when the shell emits it.
+    private var reportedWorkingDirectory: String?
+    /// PTY foreground pid while idle at the shell prompt; used to detect a
+    /// running foreground command without shell integration.
+    private var shellPid: pid_t?
+    private var isTerminating = false
+    /// Last non-empty OSC window title while a foreground command is running
+    /// (e.g. Cursor Agent). Cleared when the shell becomes idle again.
+    private var oscTitle: String?
+    /// Polls the PTY foreground process so the tab chip shows command basename
+    /// while busy and the login shell when idle (no push from libghostty).
+    private var titlePollTimer: Timer?
+    var onExited: ((TerminalSession) -> Void)?
+
+    var effectiveFontSize: Double {
+        FontZoom.effective(
+            base: AppSettings.shared.fontSize,
+            override: fontSizeOverride
+        )
+    }
+
+    /// Directory for a sibling tab: OSC 7 if usable, else shell/foreground cwd, else home.
+    var resolvedWorkingDirectory: String {
+        refreshShellPid()
+        return ProcessWorkingDirectory.resolve(
+            reportedPath: reportedWorkingDirectory,
+            shellPid: shellPid,
+            foregroundPid: terminalView.foregroundPid
+        )
+    }
+
+    /// True when the PTY foreground process is not the login shell.
+    var hasRunningCommand: Bool {
+        let foreground = terminalView.foregroundPid
+        let name = foreground.flatMap(Self.processName(for:))
+        let result = Self.hasRunningCommand(
+            foregroundPid: foreground,
+            foregroundName: name,
+            shellName: shellName,
+            shellPid: shellPid
+        )
+        if let locked = result.lockedShellPid {
+            shellPid = locked
+        }
+        return result.isBusy
+    }
+
+    /// Pure busy policy for close-confirm without reading the live PTY.
+    /// When the foreground is the login shell, `lockedShellPid` is that pid.
+    static func hasRunningCommand(
+        foregroundPid: pid_t?,
+        foregroundName: String?,
+        shellName: String,
+        shellPid: pid_t?
+    ) -> (isBusy: Bool, lockedShellPid: pid_t?) {
+        guard let foregroundPid else {
+            return (false, nil)
+        }
+
+        // Idle when the foreground process is our login shell (also locks in shellPid).
+        if foregroundName == shellName {
+            return (false, foregroundPid)
+        }
+
+        if let shellPid {
+            return (foregroundPid != shellPid, nil)
+        }
+
+        // Shell not observed yet: treat a non-shell foreground as busy, but
+        // ignore the brief `/bin/sh` wrapper used to exec the login shell.
+        let isBusy = foregroundName != nil && foregroundName != "sh"
+        return (isBusy, nil)
+    }
+
+    /// Tab chip label: OSC title while busy if set, else process basename, else shell.
+    /// When `directoryName` is non-empty, prefixes as `dir - label`.
+    static func displayTitle(
+        isBusy: Bool,
+        foregroundName: String?,
+        shellName: String,
+        oscTitle: String? = nil,
+        directoryName: String? = nil
+    ) -> String {
+        let base: String
+        if isBusy {
+            if let oscTitle, !oscTitle.isEmpty {
+                base = oscTitle
+            } else if let foregroundName, !foregroundName.isEmpty {
+                base = foregroundName
+            } else {
+                base = shellName
+            }
+        } else {
+            base = shellName
+        }
+        guard let directoryName, !directoryName.isEmpty else {
+            return base
+        }
+        return "\(directoryName) - \(base)"
+    }
+
+    init(workingDirectory: String = NSHomeDirectory()) {
+        let shellPath = TermacTerminalConfig.loginShell()
+        let launchCommand = TermacTerminalConfig.makeLaunchCommand(shellPath: shellPath)
+        let shellName = (shellPath as NSString).lastPathComponent
+        let launchCwd = ProcessWorkingDirectory.isUsableDirectory(workingDirectory)
+            ? workingDirectory
+            : NSHomeDirectory()
+
+        self.launchCommand = launchCommand
+        self.shellName = shellName
+        title = Self.displayTitle(
+            isBusy: false,
+            foregroundName: nil,
+            shellName: shellName,
+            directoryName: Self.directoryNameForTitle(launchCwd)
+        )
+        controller = TerminalController(
+            configSource: .none,
+            theme: TermacTerminalConfig.ghosttyTheme(),
+            terminalConfiguration: TermacTerminalConfig.terminalConfiguration(
+                command: launchCommand
+            )
+        )
+        let terminalView = AppTerminalView(
+            frame: NSRect(
+                x: 0,
+                y: 0,
+                width: TermacConstants.defaultTerminalWidth,
+                height: TermacConstants.defaultTerminalHeight
+            )
+        )
+        self.terminalView = terminalView
+        super.init()
+
+        terminalView.delegate = self
+        terminalView.configuration = TerminalSurfaceOptions(
+            backend: .exec,
+            workingDirectory: launchCwd,
+            envVars: TermacTerminalConfig.surfaceEnvironment()
+        )
+        terminalView.controller = controller
+        applyAppearance()
+        startTitlePolling()
+    }
+
+    /// Reconfigures libghostty when theme or font settings change.
+    /// Pass `clearFontZoom: true` on Settings refresh so tabs adopt the new
+    /// Settings size instead of keeping a temporary ⌘+/− override.
+    func applyAppearance(clearFontZoom: Bool = false) {
+        if clearFontZoom {
+            fontSizeOverride = nil
+        }
+        _ = controller.setTerminalConfiguration(
+            TermacTerminalConfig.terminalConfiguration(
+                command: launchCommand,
+                fontSize: effectiveFontSize
+            )
+        )
+        _ = controller.setTheme(TermacTerminalConfig.ghosttyTheme())
+        controller.setColorScheme(Theme.isDark ? .dark : .light)
+    }
+
+    func increaseFontSize() {
+        fontSizeOverride = FontZoom.increased(
+            base: AppSettings.shared.fontSize,
+            override: fontSizeOverride
+        )
+        applyAppearance()
+    }
+
+    func decreaseFontSize() {
+        fontSizeOverride = FontZoom.decreased(
+            base: AppSettings.shared.fontSize,
+            override: fontSizeOverride
+        )
+        applyAppearance()
+    }
+
+    func resetFontSize() {
+        guard fontSizeOverride != nil else { return }
+        fontSizeOverride = nil
+        applyAppearance()
+    }
+
+    func performFindSearch(_ query: String) {
+        _ = terminalView.performBindingAction(TerminalFind.searchAction(for: query))
+    }
+
+    func performFindNext() {
+        _ = terminalView.performBindingAction(TerminalFind.navigateNext)
+    }
+
+    func performFindPrevious() {
+        _ = terminalView.performBindingAction(TerminalFind.navigatePrevious)
+    }
+
+    func endFindSearch() {
+        _ = terminalView.performBindingAction(TerminalFind.end)
+    }
+
+    /// Tears down the surface when the host is already closing the tab.
+    /// Does not invoke `onExited` - that callback is only for spontaneous
+    /// shell/surface exit, otherwise TabManager.close would re-enter and
+    /// remove with a stale index.
+    func terminate() {
+        guard !hasExited, !isTerminating else { return }
+        isTerminating = true
+        hasExited = true
+        oscTitle = nil
+        stopTitlePolling()
+        terminalView.controller = nil
+    }
+
+    private func refreshShellPid() {
+        // hasRunningCommand locks shellPid when the foreground is the login shell.
+        _ = hasRunningCommand
+    }
+
+    private func startTitlePolling() {
+        stopTitlePolling()
+        let timer = Timer(timeInterval: 0.5, repeats: true) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.refreshTitleFromForeground()
+            }
+        }
+        // Common mode keeps polling while the run loop is in tracking/event modes
+        // (e.g. mouse-down on the tab bar) and for parked tabs.
+        RunLoop.main.add(timer, forMode: .common)
+        titlePollTimer = timer
+        refreshTitleFromForeground()
+    }
+
+    private func stopTitlePolling() {
+        titlePollTimer?.invalidate()
+        titlePollTimer = nil
+    }
+
+    private func refreshTitleFromForeground() {
+        let foreground = terminalView.foregroundPid
+        let name = foreground.flatMap(Self.processName(for:))
+        let result = Self.hasRunningCommand(
+            foregroundPid: foreground,
+            foregroundName: name,
+            shellName: shellName,
+            shellPid: shellPid
+        )
+        if let locked = result.lockedShellPid {
+            shellPid = locked
+        }
+        // Drop program OSC titles once the login shell is foreground again.
+        if !result.isBusy {
+            oscTitle = nil
+        }
+        let next = Self.displayTitle(
+            isBusy: result.isBusy,
+            foregroundName: name,
+            shellName: shellName,
+            oscTitle: oscTitle,
+            directoryName: Self.directoryNameForTitle(resolvedWorkingDirectory)
+        )
+        if title != next {
+            title = next
+        }
+    }
+
+    /// Recomputes the tab chip from current foreground / cwd / settings.
+    func refreshTitle() {
+        refreshTitleFromForeground()
+    }
+
+    /// Basename for the title prefix when the setting is on; otherwise nil.
+    private static func directoryNameForTitle(_ path: String) -> String? {
+        guard AppSettings.shared.showCwdInTabTitle else { return nil }
+        let name = (path as NSString).lastPathComponent
+        return name.isEmpty ? nil : name
+    }
+
+    private static func processName(for pid: pid_t) -> String? {
+        var buffer = [CChar](repeating: 0, count: Int(MAXPATHLEN))
+        let length = buffer.withUnsafeMutableBufferPointer { ptr in
+            proc_name(pid, ptr.baseAddress, UInt32(ptr.count))
+        }
+        guard length > 0 else { return nil }
+        return String(cString: buffer)
+    }
+}
+
+// MARK: - libghostty surface callbacks
+
+extension TerminalSession: TerminalSurfaceTitleDelegate {
+    func terminalDidChangeTitle(_ title: String) {
+        guard !title.isEmpty else { return }
+        // Only latch OSC while a foreground command is running so shell
+        // prompt titles (cwd / user@host) do not stick onto the next command.
+        guard hasRunningCommand else { return }
+        oscTitle = title
+        refreshTitleFromForeground()
+    }
+}
+
+extension TerminalSession: TerminalSurfaceCloseDelegate {
+    func terminalDidClose(processAlive _: Bool) {
+        guard !isTerminating else { return }
+        isTerminating = true
+        hasExited = true
+        stopTitlePolling()
+        onExited?(self)
+    }
+}
+
+extension TerminalSession: TerminalSurfaceBellDelegate {
+    func terminalDidRingBell() {
+        NSSound.beep()
+        if !NSApp.isActive {
+            NSApp.requestUserAttention(.informationalRequest)
+        }
+    }
+}
+
+extension TerminalSession: TerminalSurfaceOpenURLDelegate {
+    func terminalDidRequestOpenURL(_ url: String, kind _: TerminalOpenURLKind) {
+        guard let target = Self.allowedOpenURL(url) else { return }
+        NSWorkspace.shared.open(target)
+    }
+
+    /// Only http(s) and mailto — reject file:// and custom handlers while sandbox is off.
+    static func allowedOpenURL(_ raw: String) -> URL? {
+        guard let target = URL(string: raw),
+              let scheme = target.scheme?.lowercased(),
+              Self.allowedURLSchemes.contains(scheme)
+        else { return nil }
+        return target
+    }
+
+    private static let allowedURLSchemes: Set<String> = ["http", "https", "mailto"]
+}
+
+extension TerminalSession: TerminalSurfacePwdDelegate {
+    func terminalDidChangeWorkingDirectory(_ path: String) {
+        guard !path.isEmpty else { return }
+        reportedWorkingDirectory = path
+        refreshTitleFromForeground()
+    }
+}

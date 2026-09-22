@@ -1,120 +1,28 @@
+//
+//  TermacApp.swift
+//  termac
+//
+
 import SwiftUI
-import Sparkle
 
 @main
 struct TermacApp: App {
-    @State private var appState = AppState()
-    @State private var showSettings = false
-    private let updaterController = SPUStandardUpdaterController(
-        startingUpdater: true,
-        updaterDelegate: nil,
-        userDriverDelegate: nil
-    )
+    init() {
+        // Load prefs early; do not touch NSApp here - it is still nil.
+        _ = AppSettings.shared
+    }
 
     var body: some Scene {
-        WindowGroup {
-            ContentView()
-                .environment(appState)
-                .preferredColorScheme(SettingsManager.shared.theme.colorScheme)
-                .background(WindowConfigurator())
-                .toolbar(removing: .title)
+        WindowGroup(id: "main") {
+            WindowRootView()
                 .onAppear {
-                    NotificationService.shared.requestPermission()
-                    appState.restoreIfNeeded()
-                }
-                .onReceive(NotificationCenter.default.publisher(for: .openSettings)) { _ in
-                    showSettings = true
-                }
-                .sheet(isPresented: $showSettings) {
-                    SettingsView()
-                }
-                .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
-                    appState.saveNow()
-                    ClaudeHookService.shared.cleanup()
+                    AppSettings.shared.applyAppAppearance()
                 }
         }
+        .windowStyle(.hiddenTitleBar)
+        .defaultSize(WindowGeometry.contentSize())
         .commands {
-            // File menu
-            CommandGroup(after: .newItem) {
-                Button("New Tab") {
-                    if let session = appState.selectedSession {
-                        let tab = session.createTab()
-                        session.addTab(tab)
-                    }
-                }
-                .keyboardShortcut("t", modifiers: .command)
-
-                Divider()
-
-                Menu("Tab Layout") {
-                    Button("Horizontal") { SettingsManager.shared.tabLayoutMode = .horizontal }
-                    Button("Vertical") { SettingsManager.shared.tabLayoutMode = .vertical }
-                }
-            }
-
-            // View menu — split pane
-            CommandGroup(after: .toolbar) {
-                Button("Split Right") {
-                    appState.selectedSession?.splitActiveTab(direction: .right)
-                }
-                .keyboardShortcut("d", modifiers: .command)
-
-                Button("Split Down") {
-                    appState.selectedSession?.splitActiveTab(direction: .down)
-                }
-                .keyboardShortcut("d", modifiers: [.command, .shift])
-
-                if appState.selectedSession?.splitRoot != nil {
-                    Button("Unsplit") {
-                        withAnimation { appState.selectedSession?.unsplit() }
-                    }
-                }
-
-                Divider()
-
-                Button("Increase Font Size") {
-                    SettingsManager.shared.increaseFontSize()
-                }
-                .keyboardShortcut("+", modifiers: .command)
-
-                Button("Decrease Font Size") {
-                    SettingsManager.shared.decreaseFontSize()
-                }
-                .keyboardShortcut("-", modifiers: .command)
-
-                Button("Reset Font Size") {
-                    SettingsManager.shared.resetFontSize()
-                }
-                .keyboardShortcut("0", modifiers: .command)
-
-                Divider()
-            }
-
-            // Edit menu — find
-            CommandGroup(after: .textEditing) {
-                Button("Find in Terminal") {
-                    NotificationCenter.default.post(name: .toggleTerminalSearch, object: nil)
-                }
-                .keyboardShortcut("f", modifiers: .command)
-            }
-
-            // Window menu — command palette and history
-            CommandGroup(after: .windowArrangement) {
-                Button("Command Palette") {
-                    NotificationCenter.default.post(name: .toggleCommandPalette, object: nil)
-                }
-                .keyboardShortcut("p", modifiers: .command)
-
-                Button("Terminal History") {
-                    NotificationCenter.default.post(name: .toggleTerminalHistory, object: nil)
-                }
-                .keyboardShortcut("h", modifiers: [.command, .shift])
-            }
-
-            // App menu — Check for Updates
-            CommandGroup(after: .appInfo) {
-                CheckForUpdatesView(updater: updaterController.updater)
-            }
+            TermacCommands()
         }
 
         Settings {
@@ -123,128 +31,104 @@ struct TermacApp: App {
     }
 }
 
-// MARK: - Sparkle Check for Updates
-
-struct CheckForUpdatesView: View {
-    let updater: SPUUpdater
+private struct WindowRootView: View {
+    @StateObject private var tabs = TabManager()
 
     var body: some View {
-        Button("Check for Updates...") {
-            updater.checkForUpdates()
-        }
+        ContentView(tabs: tabs)
+            .focusedSceneObject(tabs)
     }
 }
 
-extension Notification.Name {
-    static let toggleCommandPalette = Notification.Name("toggleCommandPalette")
-}
+private struct TermacCommands: Commands {
+    @Environment(\.openWindow) private var openWindow
+    @FocusedObject private var tabs: TabManager?
 
-// MARK: - Window Configurator
-
-/// Persistently configures the NSWindow for seamless title bar.
-/// Observes window changes to reapply settings when SwiftUI resets them.
-struct WindowConfigurator: NSViewRepresentable {
-    func makeNSView(context: Context) -> WindowConfiguratorView {
-        WindowConfiguratorView()
-    }
-
-    func updateNSView(_ nsView: WindowConfiguratorView, context: Context) {}
-}
-
-class WindowConfiguratorView: NSView, NSWindowDelegate {
-    private var kvoObservation: NSKeyValueObservation?
-    private var toolbarObservation: NSKeyValueObservation?
-    private var titlebarObservation: NSKeyValueObservation?
-    private var notificationToken: NSObjectProtocol?
-    private var isApplying = false
-
-    override func viewDidMoveToWindow() {
-        super.viewDidMoveToWindow()
-        kvoObservation = nil
-        toolbarObservation = nil
-        titlebarObservation = nil
-        if let notificationToken {
-            NotificationCenter.default.removeObserver(notificationToken)
-            self.notificationToken = nil
-        }
-        guard let window else {
-            return
-        }
-        window.delegate = self
-        applyConfig(window)
-
-        // KVO: whenever SwiftUI resets styleMask, immediately re-insert fullSizeContentView
-        kvoObservation = window.observe(\.styleMask, options: [.new]) { [weak self] win, _ in
-            Task { @MainActor [weak self] in
-                guard let self, !self.isApplying else { return }
-                self.applyConfig(win)
+    var body: some Commands {
+        CommandGroup(replacing: .newItem) {
+            Button("New Window") {
+                openWindow(id: "main")
             }
-        }
-        toolbarObservation = window.observe(\.toolbar, options: [.new]) { [weak self] win, _ in
-            Task { @MainActor [weak self] in
-                guard let self, !self.isApplying else { return }
-                self.applyConfig(win)
+            .keyboardShortcut("n", modifiers: .command)
+
+            Button("New Tab") {
+                tabs?.newTab()
             }
+            .keyboardShortcut("t", modifiers: .command)
+            .disabled(tabs == nil)
         }
-        // KVO: SwiftUI can reset titlebar transparency during re-renders
-        // (e.g. after session restoration triggers preferredColorScheme re-evaluation).
-        // Without this, the title bar becomes opaque while fullSizeContentView is active,
-        // causing the tab bar to be hidden behind an opaque title bar in non-glass mode.
-        titlebarObservation = window.observe(\.titlebarAppearsTransparent, options: [.new]) { [weak self] win, change in
-            guard change.newValue == false else { return }
-            Task { @MainActor [weak self] in
-                guard let self, !self.isApplying else { return }
-                self.applyConfig(win)
+
+        CommandGroup(after: .newItem) {
+            Button("Close Tab") {
+                tabs?.closeSelected()
             }
-        }
-        notificationToken = NotificationCenter.default.addObserver(
-            forName: NSWindow.didBecomeKeyNotification,
-            object: window,
-            queue: .main
-        ) { [weak self] _ in
-            Task { @MainActor [weak self] in
-                self?.applyConfig(window)
+            .keyboardShortcut("w", modifiers: .command)
+            .disabled(tabs == nil)
+
+            Divider()
+
+            Button("Show Next Tab") {
+                tabs?.selectNext()
             }
+            .keyboardShortcut("]", modifiers: [.command, .shift])
+            .disabled(tabs == nil)
+
+            Button("Show Previous Tab") {
+                tabs?.selectPrevious()
+            }
+            .keyboardShortcut("[", modifiers: [.command, .shift])
+            .disabled(tabs == nil)
+
+            Button("Move Tab Left") {
+                withAnimation(.easeInOut(duration: 0.15)) {
+                    tabs?.moveSelectedLeft()
+                }
+            }
+            .keyboardShortcut(.leftArrow, modifiers: [.command, .shift])
+            .disabled(tabs == nil)
+
+            Button("Move Tab Right") {
+                withAnimation(.easeInOut(duration: 0.15)) {
+                    tabs?.moveSelectedRight()
+                }
+            }
+            .keyboardShortcut(.rightArrow, modifiers: [.command, .shift])
+            .disabled(tabs == nil)
+
+            Divider()
+
+            Button("Reload Configuration") {
+                AppSettings.shared.reloadFromDisk()
+            }
+            .keyboardShortcut(",", modifiers: [.command, .shift])
         }
 
-        // Safety net: re-apply after SwiftUI settles post-restoration layout.
-        // Glass mode already gets a delayed re-apply via applyGlassIfNeeded's
-        // asyncAfter, but non-glass mode needs this to survive property resets
-        // triggered by session restoration in onAppear.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
-            guard let self, let window = self.window else { return }
-            self.applyConfig(window)
-        }
-    }
-
-    private func applyConfig(_ window: NSWindow) {
-        isApplying = true
-        WindowChromeConfigurator.apply(to: window)
-        isApplying = false
-    }
-
-    // MARK: - Window Close Confirmation
-
-    func windowShouldClose(_ sender: NSWindow) -> Bool {
-        guard SettingsManager.shared.confirmBeforeClose else {
-            NSApplication.shared.terminate(nil)
-            return true
+        CommandGroup(after: .pasteboard) {
+            Button("Find…") {
+                tabs?.showFind()
+            }
+            .keyboardShortcut("f", modifiers: .command)
+            .disabled(tabs == nil)
         }
 
-        let alert = NSAlert()
-        alert.messageText = "Quit Termac?"
-        alert.informativeText = "All terminal sessions and running Claude Agents will be closed."
-        alert.alertStyle = .warning
-        alert.addButton(withTitle: "Quit")
-        alert.addButton(withTitle: "Cancel")
+        CommandMenu("View") {
+            Button("Larger") {
+                tabs?.increaseFontSize()
+            }
+            .keyboardShortcut("=", modifiers: .command)
+            .disabled(tabs == nil)
 
-        let response = alert.runModal()
-        if response == .alertFirstButtonReturn {
-            // Terminate the entire app — just closing the window leaves AppState
-            // alive with dead terminal views, causing broken tabs on reopen.
-            NSApplication.shared.terminate(nil)
-            return true
+            Button("Smaller") {
+                tabs?.decreaseFontSize()
+            }
+            .keyboardShortcut("-", modifiers: .command)
+            .disabled(tabs == nil)
+
+            Button("Actual Size") {
+                tabs?.resetFontSize()
+            }
+            .keyboardShortcut("0", modifiers: .command)
+            .disabled(tabs == nil)
         }
-        return false
     }
 }
