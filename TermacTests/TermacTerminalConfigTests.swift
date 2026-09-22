@@ -6,6 +6,7 @@
 import Testing
 @testable import Termac
 
+@MainActor
 struct TermacTerminalConfigTests {
     @Test func makeLaunchCommandForPlainPath() {
         let command = TermacTerminalConfig.makeLaunchCommand(shellPath: "/bin/zsh")

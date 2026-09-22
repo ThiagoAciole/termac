@@ -11,6 +11,8 @@ import GhosttyTheme
 /// Ghostty configuration and launch helpers owned by the Termac host.
 /// libghostty renders and runs the PTY; the host decides shell, env, keybinds,
 /// and which Ghostty defaults to clear so app menus keep Cmd-T / Cmd-W.
+/// MainActor-bound: every helper reads `AppSettings` (MainActor state).
+@MainActor
 enum TermacTerminalConfig {
     static func terminalConfiguration(
         command: String,
