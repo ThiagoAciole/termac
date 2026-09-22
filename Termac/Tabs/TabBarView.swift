@@ -8,7 +8,6 @@ import SwiftUI
 struct TabBarView: View {
     @ObservedObject var tabs: TabManager
     @ObservedObject private var settings = AppSettings.shared
-    @Environment(\.openSettings) private var openSettings
     @Environment(\.headerScale) private var headerScale
 
     /// Latest scroll geometry for arrow page jumps (not @Published — avoids per-frame redraws).
@@ -109,19 +108,7 @@ struct TabBarView: View {
             // Leftover width is non-hit-testable so double-click / drag reach WindowDragRegion.
             Spacer(minLength: 8)
 
-            AgentMenu(tabs: tabs)
-
-            ChromeButton(
-                systemName: settings.settingsIconSymbol,
-                help: "Settings",
-                iconSize: settings.headerSize.actionIconSize * settings.actionIconScale * headerScale,
-                frameWidth: settings.headerSize.buttonFrameWidth * headerScale,
-                frameHeight: settings.headerSize.buttonFrameHeight * headerScale
-            ) {
-                openSettings()
-            }
-            .padding(.leading, 12)
-            .padding(.trailing, 6)
+            ChromeActionsCluster(tabs: tabs)
         }
         .frame(height: settings.headerSize.barHeight * headerScale)
         .background {

@@ -54,3 +54,41 @@ struct ChromeButton: View {
         .help(help)
     }
 }
+
+/// Agents + Settings grouped in an outlined pill so the trailing header
+/// actions read as one control across both tab-bar layouts.
+struct ChromeActionsCluster: View {
+    @ObservedObject var tabs: TabManager
+    @ObservedObject private var settings = AppSettings.shared
+    @Environment(\.openSettings) private var openSettings
+    @Environment(\.headerScale) private var headerScale
+
+    var body: some View {
+        HStack(spacing: 0) {
+            AgentMenu(tabs: tabs)
+
+            ChromeButton(
+                systemName: settings.settingsIconSymbol,
+                help: "Settings",
+                iconSize: settings.headerSize.actionIconSize * settings.actionIconScale * headerScale,
+                frameWidth: settings.headerSize.buttonFrameWidth * headerScale,
+                frameHeight: settings.headerSize.buttonFrameHeight * headerScale
+            ) {
+                openSettings()
+            }
+        }
+        .padding(.horizontal, 5)
+        .background(
+            // Black-based fill so the pill reads as an inset (darker than the
+            // chrome bar) in dark themes, matching the reference layout.
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(Color.black.opacity(0.18))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .strokeBorder(Color.primary.opacity(0.16))
+                )
+        )
+        .padding(.leading, 12)
+        .padding(.trailing, 6)
+    }
+}

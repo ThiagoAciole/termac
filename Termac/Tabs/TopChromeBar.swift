@@ -5,13 +5,12 @@
 
 import SwiftUI
 
-/// Top strip for the content column in vertical-tabs mode: sidebar toggle, window drag, + / Settings / Layout.
+/// Top strip for the content column in vertical-tabs mode: sidebar toggle, window drag, + / Settings.
 /// When the sidebar is visible, traffic lights sit over it; when collapsed, this bar insets for them.
 struct TopChromeBar: View {
     @ObservedObject var tabs: TabManager
     @Binding var isSidebarVisible: Bool
     @ObservedObject private var settings = AppSettings.shared
-    @Environment(\.openSettings) private var openSettings
     @Environment(\.headerScale) private var headerScale
 
     var body: some View {
@@ -47,21 +46,7 @@ struct TopChromeBar: View {
                 tabs.newTab()
             }
 
-            AgentMenu(tabs: tabs)
-
-            ChromeButton(
-                systemName: settings.settingsIconSymbol,
-                help: "Settings",
-                iconSize: settings.headerSize.actionIconSize * settings.actionIconScale * headerScale,
-                frameWidth: settings.headerSize.buttonFrameWidth * headerScale,
-                frameHeight: settings.headerSize.buttonFrameHeight * headerScale
-            ) {
-                openSettings()
-            }
-            .padding(.leading, 12)
-
-            WindowLayoutMenu()
-                .padding(.trailing, 6)
+            ChromeActionsCluster(tabs: tabs)
         }
         .frame(height: settings.headerSize.barHeight * headerScale)
         .background {
