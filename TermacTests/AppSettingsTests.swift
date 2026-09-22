@@ -508,4 +508,48 @@ struct AppSettingsTests {
         settings.reloadFromDisk()
         #expect(settings.verticalTabBarWidth == 160)
     }
+
+    @Test func handlesCommandFilesDefaultsTrue() throws {
+        let url = try makeTempConfigURL()
+        defer { cleanup(url) }
+
+        let settings = makeSettings(configURL: url)
+        #expect(settings.handlesCommandFiles == true)
+        #expect(AppSettings.Defaults.handlesCommandFiles == true)
+    }
+
+    @Test func missingHandleCommandFilesKeyDefaultsToTrue() throws {
+        let url = try makeTempConfigURL()
+        defer { cleanup(url) }
+
+        try """
+        theme: GitHub Dark Default
+        window:
+          padding: 8
+        """.write(to: url, atomically: true, encoding: .utf8)
+
+        let settings = makeSettings(configURL: url)
+        #expect(settings.handlesCommandFiles == true)
+    }
+
+    @Test func handlesCommandFilesPersistsAndReloads() throws {
+        let url = try makeTempConfigURL()
+        defer { cleanup(url) }
+
+        let settings = makeSettings(configURL: url)
+        settings.handlesCommandFiles = false
+
+        let yaml = try String(contentsOf: url, encoding: .utf8)
+        #expect(yaml.contains("handle_command_files: false"))
+
+        let loaded = try TermacConfigStore.load(from: url)
+        #expect(loaded.handlesCommandFiles == false)
+
+        var config = TermacConfigFile.default
+        config.handlesCommandFiles = true
+        try TermacConfigStore.save(config, to: url)
+
+        settings.reloadFromDisk()
+        #expect(settings.handlesCommandFiles == true)
+    }
 }

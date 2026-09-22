@@ -27,6 +27,7 @@ final class AppSettings: ObservableObject {
         static let windowColumns = 80
         static let windowRows = 24
         static let confirmCloseRunningCommand = true
+        static let handlesCommandFiles = true
         static let showCwdInTabTitle = true
         static let verticalTabs = false
         static let verticalTabBarWidth = Int(TermacConstants.verticalTabBarWidth)
@@ -225,6 +226,15 @@ final class AppSettings: ObservableObject {
         }
     }
 
+    /// When true, `.command` files opened with the app (Finder "Open With",
+    /// Dock drops) run in a new tab instead of being ignored.
+    @Published var handlesCommandFiles: Bool {
+        didSet {
+            guard !isLoading else { return }
+            persistAndNotify()
+        }
+    }
+
     @Published var showCwdInTabTitle: Bool {
         didSet {
             guard !isLoading else { return }
@@ -283,6 +293,7 @@ final class AppSettings: ObservableObject {
         windowColumns = Defaults.windowColumns
         windowRows = Defaults.windowRows
         confirmCloseRunningCommand = Defaults.confirmCloseRunningCommand
+        handlesCommandFiles = Defaults.handlesCommandFiles
         showCwdInTabTitle = Defaults.showCwdInTabTitle
         verticalTabs = Defaults.verticalTabs
         verticalTabBarWidth = Defaults.verticalTabBarWidth
@@ -387,6 +398,7 @@ final class AppSettings: ObservableObject {
         windowColumns = Self.clamp(config.window.columns, to: Limits.windowColumns)
         windowRows = Self.clamp(config.window.rows, to: Limits.windowRows)
         confirmCloseRunningCommand = config.confirmCloseRunningCommand
+        handlesCommandFiles = config.handlesCommandFiles
         showCwdInTabTitle = config.showCwdInTabTitle
         verticalTabs = config.verticalTabs
         verticalTabBarWidth = Self.clamp(
@@ -468,6 +480,7 @@ final class AppSettings: ObservableObject {
             ),
             zoom: uiZoom,
             confirmCloseRunningCommand: confirmCloseRunningCommand,
+            handlesCommandFiles: handlesCommandFiles,
             showCwdInTabTitle: showCwdInTabTitle,
             verticalTabs: verticalTabs,
             verticalTabBarWidth: verticalTabBarWidth,
@@ -597,4 +610,7 @@ final class AppSettings: ObservableObject {
 extension Notification.Name {
     /// Posted when any setting that affects live terminals or window chrome changes.
     static let termacSettingsDidChange = Notification.Name("termacSettingsDidChange")
+    /// Posted when the system hands shell script files to the app
+    /// (Finder "Open With", Dock drops). `userInfo["urls"]` carries `[URL]`.
+    static let termacOpenShellScript = Notification.Name("termacOpenShellScript")
 }

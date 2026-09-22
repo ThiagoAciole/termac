@@ -64,6 +64,13 @@ final class TabManager: ObservableObject {
                 self?.refreshTitles()
             }
             .store(in: &cancellables)
+        NotificationCenter.default.publisher(for: .termacOpenShellScript)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] note in
+                guard let urls = note.userInfo?["urls"] as? [URL] else { return }
+                self?.runScriptsInNewTabs(at: urls)
+            }
+            .store(in: &cancellables)
     }
 
     /// Opens a tab. When `inheritingCwd` is true, launches in the selected tab's cwd.
@@ -78,6 +85,14 @@ final class TabManager: ObservableObject {
     func runAgentInNewTab(_ agent: CustomAgent) {
         openSession({ makeAgentSession($0, agent) }, inheritingCwd: true)
         selectedSession?.markAsAgent(name: agent.name, colorHex: agent.colorHex)
+    }
+
+    /// Opens each shell script handed to the app (Finder "Open With", Dock
+    /// drops, `duti`) in its own tab, inheriting the selected tab's cwd.
+    func runScriptsInNewTabs(at urls: [URL]) {
+        for url in urls where url.isFileURL {
+            openSession({ TerminalSession(runningScriptAt: url.path, workingDirectory: $0) }, inheritingCwd: true)
+        }
     }
 
     private func openSession(_ factory: (String) -> TerminalSession, inheritingCwd: Bool) {

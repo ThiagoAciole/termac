@@ -15,6 +15,8 @@ func sanitizeInheritedEnvironment() {
 
 @main
 struct TermacApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+
     init() {
         sanitizeInheritedEnvironment()
         // Load prefs early; do not touch NSApp here - it is still nil.
@@ -37,6 +39,20 @@ struct TermacApp: App {
         Settings {
             SettingsView()
         }
+    }
+}
+
+/// Routes Finder "Open With" / Dock-dropped `.command` files into Termac tabs.
+/// Gated by Settings → "Open .command files in a new tab"; without the gate,
+/// declaring document types alone would launch the app and ignore the file.
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    func application(_ application: NSApplication, open urls: [URL]) {
+        guard AppSettings.shared.handlesCommandFiles else { return }
+        NotificationCenter.default.post(
+            name: .termacOpenShellScript,
+            object: nil,
+            userInfo: ["urls": urls]
+        )
     }
 }
 

@@ -175,6 +175,15 @@ enum TermacTerminalConfig {
         return false
     }
 
+    /// `.command` files dropped on the app run like agent tabs: the script
+    /// executes through a login shell, then the tab hands off to a fresh
+    /// login shell (matching Terminal.app's keep-open behavior). The quoted
+    /// path always routes through the shell chain — script paths may contain
+    /// spaces and `direct:` cannot express them.
+    static func makeScriptLaunchCommand(shellPath: String, scriptPath: String) -> String {
+        makeAgentLaunchCommand(shellPath: shellPath, agentCommand: shellQuote(scriptPath))
+    }
+
     static func loginShell() -> String {
         if let pw = getpwuid(getuid()), let shell = pw.pointee.pw_shell {
             let path = String(cString: shell)
