@@ -102,11 +102,13 @@ enum TermacTerminalConfig {
 
     /// Agent tabs boot the agent through a non-interactive login shell
     /// (`-l -c`: PATH from zprofile, no interactive zshrc/p10k init), then
-    /// hand the tab to a fresh login shell when the agent exits.
+    /// hand the tab to a fresh login shell when the agent exits. Single
+    /// shell layer: the `exec`s collapse the boot shell away, so no
+    /// wrapper `/bin/sh` is needed to run the unset first.
     static func makeAgentLaunchCommand(shellPath: String, agentCommand: String) -> String {
-        let script = "\(agentCommand); exec \(shellQuote(shellPath)) -l"
-        let inner = "unset CLAUDE_CODE_CHILD_SESSION; exec \(shellQuote(shellPath)) -l -c \(shellQuote(script))"
-        return "/bin/sh -c \(shellQuote(inner))"
+        let quotedShell = shellQuote(shellPath)
+        let script = "unset CLAUDE_CODE_CHILD_SESSION; \(agentCommand); exec \(quotedShell) -l"
+        return "\(quotedShell) -l -c \(shellQuote(script))"
     }
 
     static func loginShell() -> String {
