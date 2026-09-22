@@ -48,7 +48,7 @@
 			exceptions = (
 				AA10000000000000000000F0 /* Exceptions for "termac" folder in "termac" target */,
 			);
-			path = termac;
+			path = Termac;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -402,7 +402,7 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = termac/Info.plist;
+				INFOPLIST_FILE = Termac/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Termac;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -435,7 +435,7 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = termac/Info.plist;
+				INFOPLIST_FILE = Termac/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Termac;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

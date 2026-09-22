@@ -1,0 +1,36 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build",
+      "type": "shell",
+      "command": "xcodebuild -project Termac.xcodeproj -scheme Termac -configuration Debug -derivedDataPath .build build",
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "shared" }
+    },
+    {
+      "label": "test",
+      "type": "shell",
+      "command": "xcodebuild -project Termac.xcodeproj -scheme Termac -destination 'platform=macOS' -derivedDataPath .build test",
+      "group": { "kind": "test", "isDefault": true },
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "shared" }
+    },
+    {
+      "label": "run",
+      "type": "shell",
+      "command": "open .build/Build/Products/Debug/Termac.app",
+      "dependsOn": ["build"],
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "shared" }
+    },
+    {
+      "label": "clean",
+      "type": "shell",
+      "command": "xcodebuild -project Termac.xcodeproj -scheme Termac -derivedDataPath .build clean",
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "shared" }
+    }
+  ]
+}

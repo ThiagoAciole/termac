@@ -1,0 +1,13 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug Termac",
+      "program": "${workspaceFolder}/.build/Build/Products/Debug/Termac.app/Contents/MacOS/Termac",
+      "preLaunchTask": "build",
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}
