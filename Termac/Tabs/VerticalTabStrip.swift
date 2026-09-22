@@ -9,6 +9,7 @@ struct VerticalTabStrip: View {
     @ObservedObject var tabs: TabManager
     var isVisible: Bool
     @ObservedObject private var settings = AppSettings.shared
+    @Environment(\.headerScale) private var headerScale
 
     /// Latest scroll geometry for arrow page jumps (not @Published — avoids per-frame redraws).
     @State private var metrics = TabStripMetrics()
@@ -35,7 +36,7 @@ struct VerticalTabStrip: View {
             VStack(spacing: 0) {
                 // Clear the traffic lights; background still paints edge-to-edge under them.
                 Color.clear
-                    .frame(height: TermacConstants.tabBarHeight)
+                    .frame(height: settings.headerSize.barHeight * headerScale)
                     .background(WindowDragRegion())
 
                 // Chevrons overlay the scroll view so they never steal height and

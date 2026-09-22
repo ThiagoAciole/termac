@@ -225,6 +225,15 @@ final class TerminalSession: NSObject, ObservableObject, Identifiable {
         _ = terminalView.performBindingAction(TerminalFind.end)
     }
 
+    /// Pastes a command into the shell and presses Enter, so it runs in the
+    /// shell's current working directory (text → paste path, Enter → key path).
+    func runCommand(_ command: String) {
+        guard !command.isEmpty else { return }
+        terminalView.acquireProgrammaticFocus()
+        terminalView.paste(text: command)
+        terminalView.sendKey(.enter)
+    }
+
     /// Tears down the surface when the host is already closing the tab.
     /// Does not invoke `onExited` - that callback is only for spontaneous
     /// shell/surface exit, otherwise TabManager.close would re-enter and

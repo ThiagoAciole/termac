@@ -9,6 +9,7 @@ struct TabBarView: View {
     @ObservedObject var tabs: TabManager
     @ObservedObject private var settings = AppSettings.shared
     @Environment(\.openSettings) private var openSettings
+    @Environment(\.headerScale) private var headerScale
 
     /// Latest scroll geometry for arrow page jumps (not @Published — avoids per-frame redraws).
     @State private var metrics = TabStripMetrics()
@@ -82,6 +83,18 @@ struct TabBarView: View {
                 }
             }
 
+            // New Tab sits right after the last tab instead of at the far right.
+            ChromeButton(
+                systemName: "plus",
+                help: "New Tab",
+                iconSize: settings.headerSize.buttonIconSize * headerScale,
+                frameWidth: settings.headerSize.buttonFrameWidth * headerScale,
+                frameHeight: settings.headerSize.buttonFrameHeight * headerScale
+            ) {
+                tabs.newTab()
+            }
+            .padding(.leading, 2)
+
             if overflows {
                 TabStripScrollButton(
                     systemName: "chevron.right",
@@ -95,34 +108,25 @@ struct TabBarView: View {
             // Leftover width is non-hit-testable so double-click / drag reach WindowDragRegion.
             Spacer(minLength: 8)
 
-            Button {
-                tabs.newTab()
-            } label: {
-                Image(systemName: "plus")
-                    .font(.system(size: 12, weight: .medium))
-                    .frame(width: 28, height: 24)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .help("New Tab")
+            AgentMenu(tabs: tabs)
 
-            Button {
+            ChromeButton(
+                systemName: "gearshape",
+                help: "Settings",
+                iconSize: settings.headerSize.buttonIconSize * headerScale,
+                frameWidth: settings.headerSize.buttonFrameWidth * headerScale,
+                frameHeight: settings.headerSize.buttonFrameHeight * headerScale
+            ) {
                 openSettings()
-            } label: {
-                Image(systemName: "gearshape")
-                    .font(.system(size: 12, weight: .medium))
-                    .frame(width: 28, height: 24)
-                    .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
-            .help("Settings")
+            .padding(.leading, 6)
             .padding(.trailing, 6)
         }
-        .frame(height: TermacConstants.tabBarHeight)
+        .frame(height: settings.headerSize.barHeight * headerScale)
         .background {
             ZStack {
                 // Tie refresh to settings.theme; color comes from Theme selection.
-                Theme.backgroundColor
+                Theme.chromeBackground
                     .id(settings.theme)
                 WindowDragRegion()
             }

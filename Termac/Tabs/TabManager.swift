@@ -219,6 +219,11 @@ final class TabManager: ObservableObject {
         selectedSession?.resetFontSize()
     }
 
+    /// Runs a CLI agent in the selected tab's shell (in its current cwd).
+    func runAgent(_ agent: CLIAgent) {
+        selectedSession?.runCommand(agent.command)
+    }
+
     // MARK: - Find
 
     func showFind() {

@@ -49,11 +49,13 @@ struct TabStripScrollButton: View {
     /// Vertical rail chevrons span the strip width; horizontal ones stay compact.
     var expandsHorizontally: Bool = false
     let action: () -> Void
+    @ObservedObject private var settings = AppSettings.shared
+    @Environment(\.headerScale) private var headerScale
 
     var body: some View {
         Button(action: action) {
             Image(systemName: systemName)
-                .font(.system(size: 11, weight: .semibold))
+                .font(.system(size: settings.headerSize.scrollButtonSize * headerScale, weight: .semibold))
                 .modifier(TabStripScrollButtonFrame(expandsHorizontally: expandsHorizontally))
                 .contentShape(Rectangle())
         }

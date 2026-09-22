@@ -19,7 +19,7 @@ enum WindowGeometry {
             ? CGFloat(settings.verticalTabBarWidth)
             : 0
         let width = CGFloat(settings.windowColumns) * cell.width + padding + chromeWidth
-        let height = TermacConstants.tabBarHeight
+        let height = settings.headerSize.barHeight
             + CGFloat(settings.windowRows) * cell.height
             + padding
         return CGSize(width: max(width, 200), height: max(height, 120))

@@ -12,6 +12,7 @@ struct TopChromeBar: View {
     @Binding var isSidebarVisible: Bool
     @ObservedObject private var settings = AppSettings.shared
     @Environment(\.openSettings) private var openSettings
+    @Environment(\.headerScale) private var headerScale
 
     var body: some View {
         HStack(spacing: 0) {
@@ -20,50 +21,50 @@ struct TopChromeBar: View {
                     .frame(width: TermacConstants.trafficLightsLeadingInset)
             }
 
-            Button {
+            ChromeButton(
+                systemName: "sidebar.left",
+                help: isSidebarVisible ? "Hide Sidebar" : "Show Sidebar",
+                iconSize: settings.headerSize.buttonIconSize * headerScale,
+                frameWidth: settings.headerSize.buttonFrameWidth * headerScale,
+                frameHeight: settings.headerSize.buttonFrameHeight * headerScale
+            ) {
                 withAnimation(.easeInOut(duration: 0.22)) {
                     isSidebarVisible.toggle()
                 }
-            } label: {
-                Image(systemName: "sidebar.left")
-                    .font(.system(size: 12, weight: .medium))
-                    .frame(width: 28, height: 24)
-                    .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
-            .help(isSidebarVisible ? "Hide Sidebar" : "Show Sidebar")
             .padding(.leading, isSidebarVisible ? 6 : 0)
 
             // Leftover width is non-hit-testable so double-click / drag reach WindowDragRegion.
             Spacer(minLength: 8)
 
-            Button {
+            ChromeButton(
+                systemName: "plus",
+                help: "New Tab",
+                iconSize: settings.headerSize.buttonIconSize * headerScale,
+                frameWidth: settings.headerSize.buttonFrameWidth * headerScale,
+                frameHeight: settings.headerSize.buttonFrameHeight * headerScale
+            ) {
                 tabs.newTab()
-            } label: {
-                Image(systemName: "plus")
-                    .font(.system(size: 12, weight: .medium))
-                    .frame(width: 28, height: 24)
-                    .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
-            .help("New Tab")
 
-            Button {
+            AgentMenu(tabs: tabs)
+
+            ChromeButton(
+                systemName: "gearshape",
+                help: "Settings",
+                iconSize: settings.headerSize.buttonIconSize * headerScale,
+                frameWidth: settings.headerSize.buttonFrameWidth * headerScale,
+                frameHeight: settings.headerSize.buttonFrameHeight * headerScale
+            ) {
                 openSettings()
-            } label: {
-                Image(systemName: "gearshape")
-                    .font(.system(size: 12, weight: .medium))
-                    .frame(width: 28, height: 24)
-                    .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
-            .help("Settings")
+            .padding(.leading, 6)
             .padding(.trailing, 6)
         }
-        .frame(height: TermacConstants.tabBarHeight)
+        .frame(height: settings.headerSize.barHeight * headerScale)
         .background {
             ZStack {
-                Theme.backgroundColor
+                Theme.chromeBackground
                     .id(settings.theme)
                 WindowDragRegion()
             }

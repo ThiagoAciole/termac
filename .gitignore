@@ -1,7 +1,14 @@
 .DS_Store
+
+# Xcode / Swift build artifacts
+.build/
 DerivedData/
 build/
+.swiftpm/
+
+# Xcode per-user state
 *.xcuserstate
 xcuserdata/
-.swiftpm/
+
+# Local editor state
 .cursor/

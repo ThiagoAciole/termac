@@ -51,6 +51,16 @@ enum Theme {
         color(hex: terminal().background) ?? Color(white: isDark ? 0.05 : 1)
     }
 
+    /// Chrome (tab bar / top strip) surface: a hair lighter than the terminal
+    /// background so the header reads as a distinct bar, without a divider.
+    static var chromeBackground: some View {
+        Theme.backgroundColor
+            .overlay(
+                (Theme.isDark ? Color.white : Color.black)
+                    .opacity(Theme.isDark ? 0.05 : 0.03)
+            )
+    }
+
     /// Dark-section picker names: default first, then every dark catalog theme.
     static var darkThemeNames: [String] {
         uniqueNames(

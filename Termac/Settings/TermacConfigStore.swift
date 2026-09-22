@@ -153,6 +153,10 @@ struct TermacConfigFile: Codable, Equatable {
     var verticalTabs: Bool
     /// Width of the vertical tab rail in points.
     var verticalTabBarWidth: Int
+    /// Header chrome scale (see `HeaderSizeSetting`).
+    var headerSize: String
+    /// User-added CLI AI agents.
+    var customAgents: [CustomAgent]
 
     enum CodingKeys: String, CodingKey {
         case theme
@@ -162,6 +166,8 @@ struct TermacConfigFile: Codable, Equatable {
         case showCwdInTabTitle = "show_cwd_in_tab_title"
         case verticalTabs = "vertical_tabs"
         case verticalTabBarWidth = "vertical_tab_bar_width"
+        case headerSize = "header_size"
+        case customAgents = "custom_agents"
     }
 
     static var `default`: TermacConfigFile {
@@ -172,7 +178,9 @@ struct TermacConfigFile: Codable, Equatable {
             confirmCloseRunningCommand: AppSettings.Defaults.confirmCloseRunningCommand,
             showCwdInTabTitle: AppSettings.Defaults.showCwdInTabTitle,
             verticalTabs: AppSettings.Defaults.verticalTabs,
-            verticalTabBarWidth: AppSettings.Defaults.verticalTabBarWidth
+            verticalTabBarWidth: AppSettings.Defaults.verticalTabBarWidth,
+            headerSize: AppSettings.Defaults.headerSize.rawValue,
+            customAgents: AppSettings.Defaults.customAgents
         )
     }
 
@@ -183,7 +191,9 @@ struct TermacConfigFile: Codable, Equatable {
         confirmCloseRunningCommand: Bool = AppSettings.Defaults.confirmCloseRunningCommand,
         showCwdInTabTitle: Bool = AppSettings.Defaults.showCwdInTabTitle,
         verticalTabs: Bool = AppSettings.Defaults.verticalTabs,
-        verticalTabBarWidth: Int = AppSettings.Defaults.verticalTabBarWidth
+        verticalTabBarWidth: Int = AppSettings.Defaults.verticalTabBarWidth,
+        headerSize: String = AppSettings.Defaults.headerSize.rawValue,
+        customAgents: [CustomAgent] = AppSettings.Defaults.customAgents
     ) {
         self.theme = theme
         self.font = font
@@ -192,6 +202,8 @@ struct TermacConfigFile: Codable, Equatable {
         self.showCwdInTabTitle = showCwdInTabTitle
         self.verticalTabs = verticalTabs
         self.verticalTabBarWidth = verticalTabBarWidth
+        self.headerSize = headerSize
+        self.customAgents = customAgents
     }
 
     init(from decoder: Decoder) throws {
@@ -216,6 +228,14 @@ struct TermacConfigFile: Codable, Equatable {
             Int.self,
             forKey: .verticalTabBarWidth
         ) ?? defaults.verticalTabBarWidth
+        headerSize = try container.decodeIfPresent(
+            String.self,
+            forKey: .headerSize
+        ) ?? defaults.headerSize
+        customAgents = try container.decodeIfPresent(
+            [CustomAgent].self,
+            forKey: .customAgents
+        ) ?? defaults.customAgents
     }
 }
 

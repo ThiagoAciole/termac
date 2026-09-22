@@ -11,16 +11,22 @@ struct ContentView: View {
     @State private var isSidebarVisible = true
 
     var body: some View {
-        Group {
-            if settings.verticalTabs {
-                verticalLayout
-            } else {
-                horizontalLayout
+        GeometryReader { geometry in
+            Group {
+                if settings.verticalTabs {
+                    verticalLayout
+                } else {
+                    horizontalLayout
+                }
             }
+            .background(Theme.backgroundColor.id(settings.theme))
+            .ignoresSafeArea(.container, edges: .top)
+            .background(WindowChromeConfigurator())
+            .environment(
+                \.headerScale,
+                HeaderSizeSetting.scale(forWidth: geometry.size.width)
+            )
         }
-        .background(Theme.backgroundColor.id(settings.theme))
-        .ignoresSafeArea(.container, edges: .top)
-        .background(WindowChromeConfigurator())
     }
 
     private var horizontalLayout: some View {
@@ -62,6 +68,7 @@ struct ContentView: View {
                     .accessibilityHidden(true)
             }
             .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
+            .padding(.top, TermacConstants.terminalTopInset)
         }
     }
 }

@@ -30,6 +30,8 @@ final class AppSettings: ObservableObject {
         static let showCwdInTabTitle = true
         static let verticalTabs = false
         static let verticalTabBarWidth = Int(TermacConstants.verticalTabBarWidth)
+        static let headerSize = HeaderSizeSetting.regular
+        static let customAgents: [CustomAgent] = []
     }
 
     enum Limits {
@@ -75,6 +77,20 @@ final class AppSettings: ObservableObject {
         didSet {
             guard !isLoading else { return }
             persistAndNotify()
+        }
+    }
+
+    @Published var headerSize: HeaderSizeSetting {
+        didSet {
+            guard !isLoading else { return }
+            schedulePersist()
+        }
+    }
+
+    @Published var customAgents: [CustomAgent] {
+        didSet {
+            guard !isLoading else { return }
+            schedulePersist()
         }
     }
 
@@ -205,6 +221,8 @@ final class AppSettings: ObservableObject {
         fontFamily = ""
         fontSize = Double(TerminalFont.defaultSize)
         fontWeight = .regular
+        headerSize = Defaults.headerSize
+        customAgents = Defaults.customAgents
         lineHeight = Defaults.lineHeight
         terminalPadding = Defaults.terminalPadding
         windowOriginX = Defaults.windowOriginX
@@ -253,6 +271,16 @@ final class AppSettings: ObservableObject {
         TermacConfigStore.openInEditor(url: configURL)
     }
 
+    func addCustomAgent(name: String, command: String) {
+        let spec = CustomAgent(name: name, command: command)
+        guard !customAgents.contains(where: { $0.command == spec.command }) else { return }
+        customAgents.append(spec)
+    }
+
+    func removeCustomAgent(_ spec: CustomAgent) {
+        customAgents.removeAll { $0.command == spec.command }
+    }
+
     /// Apply chrome light/dark from the selected theme once AppKit exists.
     func applyAppAppearance() {
         NSApp?.appearance = NSAppearance(
@@ -272,6 +300,8 @@ final class AppSettings: ObservableObject {
         fontFamily = TerminalFont.sanitizedFamily(config.font.family)
         fontSize = Self.resolvedFontSize(Double(config.font.size))
         fontWeight = FontWeightSetting(rawValue: config.font.weight) ?? .regular
+        headerSize = HeaderSizeSetting(rawValue: config.headerSize) ?? .regular
+        customAgents = config.customAgents
         lineHeight = Self.clamp(config.font.lineHeight, to: Limits.lineHeight)
         terminalPadding = Self.clamp(config.window.padding, to: Limits.terminalPadding)
         windowOriginX = Self.clamp(config.window.originX, to: Limits.windowOrigin)
@@ -361,7 +391,9 @@ final class AppSettings: ObservableObject {
             confirmCloseRunningCommand: confirmCloseRunningCommand,
             showCwdInTabTitle: showCwdInTabTitle,
             verticalTabs: verticalTabs,
-            verticalTabBarWidth: verticalTabBarWidth
+            verticalTabBarWidth: verticalTabBarWidth,
+            headerSize: headerSize.rawValue,
+            customAgents: customAgents
         )
     }
 

@@ -160,6 +160,18 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
+            Section("Header") {
+                Picker("Size", selection: $settings.headerSize) {
+                    ForEach(HeaderSizeSetting.allCases) { size in
+                        Text(size.displayName).tag(size)
+                    }
+                }
+            }
+
+            Section("AI Agents") {
+                AgentSettingsSection()
+            }
+
             Section("Keyboard Shortcuts") {
                 Button("View Keyboard Shortcuts…") {
                     showingShortcuts = true
@@ -173,7 +185,7 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 440, height: 580)
+        .frame(width: 440, height: 780)
         .padding(8)
         .sheet(isPresented: $showingShortcuts) {
             ShortcutsView()
