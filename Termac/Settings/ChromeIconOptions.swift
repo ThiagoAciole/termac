@@ -9,8 +9,8 @@ import Foundation
 /// (agents menu, settings) offered in Settings → Header.
 enum ChromeIconOptions {
     static let agentsMenu = [
-        "command",
         "app.grid.2x2.topleft.filled",
+        "command",
         "sparkles",
         "terminal",
         "wand.and.stars",
@@ -20,13 +20,13 @@ enum ChromeIconOptions {
     ]
 
     static let settingsMenu = [
+        "ellipsis.circle",
         "text.justify",
         "gearshape",
         "gearshape.fill",
         "slider.horizontal.3",
         "switch.2",
         "dial.min",
-        "ellipsis.circle",
         "wrench.and.screwdriver",
     ]
 

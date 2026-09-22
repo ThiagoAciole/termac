@@ -20,7 +20,7 @@ codesign -dv --verbose=4 /caminho/para/Termac.app
 # esperado: Authority=Termac Self-Signed
 codesign -d --extract-certificates=/tmp/termac-cert /caminho/para/Termac.app
 openssl x509 -inform DER -in /tmp/termac-cert0 -noout -fingerprint -sha256
-# esperado: SHA256 Fingerprint=21:39:A4:00:00:4C:B8:14:D9:D2:30:4D:D3:20:80:4E:78:96:B7:C7:46:59:EF:C4:B5:02:C0:04:79:C8:C6:7B
+# esperado: SHA256 Fingerprint=BD:34:10:13:1B:F1:D6:58:CD:0E:82:C6:58:5C:0A:B1:EC:30:C9:C8:F8:26:C9:85:61:4C:58:25:14:C5:EE:D4
 rm -f /tmp/termac-cert*
 ```
 

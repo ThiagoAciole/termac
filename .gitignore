@@ -13,3 +13,6 @@ xcuserdata/
 
 # Local editor state
 .cursor/
+
+# Build output (o DMG de release fica versionado; o .app nunca)
+dist/Termac.app/

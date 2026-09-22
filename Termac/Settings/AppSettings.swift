@@ -32,8 +32,8 @@ final class AppSettings: ObservableObject {
         static let verticalTabBarWidth = Int(TermacConstants.verticalTabBarWidth)
         static let headerSize = HeaderSizeSetting.regular
         static let uiZoom = 100.0
-        static let agentsIconSymbol = "command"
-        static let settingsIconSymbol = "text.justify"
+        static let agentsIconSymbol = "app.grid.2x2.topleft.filled"
+        static let settingsIconSymbol = "ellipsis.circle"
         static let actionIconScale = 1.0
         static let customAgents: [CustomAgent] = [
             CustomAgent(name: "Tompero", command: "tompero start-day", colorHex: "#8E8E93"),

@@ -11,7 +11,7 @@ codesign --verify --verbose=4 Termac.app
 
 codesign -d --extract-certificates=/tmp/termac-cert Termac.app
 openssl x509 -inform DER -in /tmp/termac-cert0 -noout -fingerprint -sha256
-# esperado: SHA256 Fingerprint=21:39:A4:00:00:4C:B8:14:D9:D2:30:4D:D3:20:80:4E:78:96:B7:C7:46:59:EF:C4:B5:02:C0:04:79:C8:C6:7B
+# esperado: SHA256 Fingerprint=BD:34:10:13:1B:F1:D6:58:CD:0E:82:C6:58:5C:0A:B1:EC:30:C9:C8:F8:26:C9:85:61:4C:58:25:14:C5:EE:D4
 rm -f /tmp/termac-cert*
 ```
 
@@ -68,7 +68,9 @@ security find-identity -p codesigning | grep "Termac Self-Signed"
 
 O script assina o app com a identidade, monta o volume com o `Termac.app` + link `/Applications`, cria `dist/Termac-<versão>.dmg` e remonta o DMG para verificar a assinatura.
 
-## 3. Segredos de CI (quando houver workflow)
+## 3. Segredos de CI
+
+O workflow [`.github/workflows/release.yml`](../.github/workflows/release.yml) importa a identidade destes secrets e confere o fingerprint contra o `EXPECTED_FINGERPRINT` hardcodeado. Sem os secrets, o build roda com identidade descartável e publica só artifacts (nunca release).
 
 Exporte **só** a identidade Termac (Keychain Access → selecione `Termac Self-Signed` → File → Export Items… como PKCS#12). **Não** rode `security export -t identities` no keychain inteiro — isso pode empacotar chaves alheias no secret.
 

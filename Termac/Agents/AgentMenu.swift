@@ -35,18 +35,17 @@ struct AgentMenu: View {
             Divider()
             Button("Manage Agents…") { openSettings() }
         } label: {
-            Image(systemName: settings.agentsIconSymbol)
-                .font(.system(
-                    size: settings.headerSize.actionIconSize * settings.actionIconScale * headerScale,
-                    weight: .medium
-                ))
-                .frame(
-                width: settings.headerSize.buttonFrameWidth * headerScale,
-                height: settings.headerSize.buttonFrameHeight * headerScale
+            // Same glyph structure as ChromeButton — the legacy borderless
+            // menu style shrank menu labels to menu-bar metrics.
+            ChromeIconLabel(
+                systemName: settings.agentsIconSymbol,
+                iconSize: settings.headerSize.actionIconSize * settings.actionIconScale * headerScale,
+                frameWidth: settings.headerSize.buttonFrameWidth * headerScale,
+                frameHeight: settings.headerSize.buttonFrameHeight * headerScale
             )
-            .contentShape(Rectangle())
         }
-        .menuStyle(.borderlessButton)
+        .menuStyle(.button)
+        .buttonStyle(.plain)
         .menuIndicator(.hidden)
         .fixedSize()
         .help("AI Agents")
