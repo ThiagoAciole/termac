@@ -56,8 +56,9 @@ hdiutil create -volname "Termac" -srcfolder "$STAGING/Volume" \
 echo "==> Verifying"
 MOUNT="$(mktemp -d)"
 hdiutil attach "dist/Termac-$VERSION.dmg" -mountpoint "$MOUNT" -nobrowse -readonly -quiet
-codesign --verify --strict "$MOUNT/$APP_NAME"
-hdiutil detach "$MOUNT" -quiet
+codesign --verify --strict --verbose=2 "$MOUNT/$APP_NAME"
+# Spotlight pode indexar o volume e travar o detach — cleanup é best-effort.
+hdiutil detach "$MOUNT" -force >/dev/null 2>&1 || true
 rm -rf "$MOUNT"
 
 echo
