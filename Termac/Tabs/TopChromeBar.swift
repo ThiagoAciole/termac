@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// Top strip for the content column in vertical-tabs mode: sidebar toggle, window drag, + / Settings.
+/// Top strip for the content column in vertical-tabs mode: sidebar toggle, window drag, + / Settings / Layout.
 /// When the sidebar is visible, traffic lights sit over it; when collapsed, this bar insets for them.
 struct TopChromeBar: View {
     @ObservedObject var tabs: TabManager
@@ -59,7 +59,9 @@ struct TopChromeBar: View {
                 openSettings()
             }
             .padding(.leading, 12)
-            .padding(.trailing, 6)
+
+            WindowLayoutMenu()
+                .padding(.trailing, 6)
         }
         .frame(height: settings.headerSize.barHeight * headerScale)
         .background {
