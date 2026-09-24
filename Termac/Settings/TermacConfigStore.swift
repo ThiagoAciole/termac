@@ -149,8 +149,6 @@ struct TermacConfigFile: Codable, Equatable {
     var zoom: Double
     /// When true, closing a tab with a foreground process prompts for confirmation.
     var confirmCloseRunningCommand: Bool
-    /// When true, `.command` files opened with the app run in a new tab.
-    var handlesCommandFiles: Bool
     /// When true, tab titles are prefixed with the cwd basename (`dir - node`).
     var showCwdInTabTitle: Bool
     /// When true, tabs are shown in a left rail instead of a top strip.
@@ -174,7 +172,6 @@ struct TermacConfigFile: Codable, Equatable {
         case window
         case zoom
         case confirmCloseRunningCommand = "confirm_close_running_command"
-        case handlesCommandFiles = "handle_command_files"
         case showCwdInTabTitle = "show_cwd_in_tab_title"
         case verticalTabs = "vertical_tabs"
         case verticalTabBarWidth = "vertical_tab_bar_width"
@@ -192,7 +189,6 @@ struct TermacConfigFile: Codable, Equatable {
             window: .default,
             zoom: AppSettings.Defaults.uiZoom,
             confirmCloseRunningCommand: AppSettings.Defaults.confirmCloseRunningCommand,
-            handlesCommandFiles: AppSettings.Defaults.handlesCommandFiles,
             showCwdInTabTitle: AppSettings.Defaults.showCwdInTabTitle,
             verticalTabs: AppSettings.Defaults.verticalTabs,
             verticalTabBarWidth: AppSettings.Defaults.verticalTabBarWidth,
@@ -210,7 +206,6 @@ struct TermacConfigFile: Codable, Equatable {
         window: Window,
         zoom: Double = AppSettings.Defaults.uiZoom,
         confirmCloseRunningCommand: Bool = AppSettings.Defaults.confirmCloseRunningCommand,
-        handlesCommandFiles: Bool = AppSettings.Defaults.handlesCommandFiles,
         showCwdInTabTitle: Bool = AppSettings.Defaults.showCwdInTabTitle,
         verticalTabs: Bool = AppSettings.Defaults.verticalTabs,
         verticalTabBarWidth: Int = AppSettings.Defaults.verticalTabBarWidth,
@@ -225,7 +220,6 @@ struct TermacConfigFile: Codable, Equatable {
         self.window = window
         self.zoom = zoom
         self.confirmCloseRunningCommand = confirmCloseRunningCommand
-        self.handlesCommandFiles = handlesCommandFiles
         self.showCwdInTabTitle = showCwdInTabTitle
         self.verticalTabs = verticalTabs
         self.verticalTabBarWidth = verticalTabBarWidth
@@ -243,7 +237,6 @@ struct TermacConfigFile: Codable, Equatable {
         try container.encode(window, forKey: .window)
         try container.encode(TwoDecimalFloat(zoom), forKey: .zoom)
         try container.encode(confirmCloseRunningCommand, forKey: .confirmCloseRunningCommand)
-        try container.encode(handlesCommandFiles, forKey: .handlesCommandFiles)
         try container.encode(showCwdInTabTitle, forKey: .showCwdInTabTitle)
         try container.encode(verticalTabs, forKey: .verticalTabs)
         try container.encode(verticalTabBarWidth, forKey: .verticalTabBarWidth)
@@ -266,10 +259,6 @@ struct TermacConfigFile: Codable, Equatable {
             Bool.self,
             forKey: .confirmCloseRunningCommand
         ) ?? defaults.confirmCloseRunningCommand
-        handlesCommandFiles = try container.decodeIfPresent(
-            Bool.self,
-            forKey: .handlesCommandFiles
-        ) ?? defaults.handlesCommandFiles
         showCwdInTabTitle = try container.decodeIfPresent(
             Bool.self,
             forKey: .showCwdInTabTitle

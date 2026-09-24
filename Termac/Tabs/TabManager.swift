@@ -64,13 +64,26 @@ final class TabManager: ObservableObject {
                 self?.refreshTitles()
             }
             .store(in: &cancellables)
-        NotificationCenter.default.publisher(for: .termacOpenShellScript)
-            .receive(on: RunLoop.main)
-            .sink { [weak self] note in
-                guard let urls = note.userInfo?["urls"] as? [URL] else { return }
-                self?.runScriptsInNewTabs(at: urls)
-            }
-            .store(in: &cancellables)
+        // On quit, kill every PTY child so shells (and their foreground
+        // commands) don't get orphaned to launchd and linger in the
+        // background. Selector-based observer fires synchronously during
+        // `willTerminate` — unlike the Combine `receive(on:)` hop above,
+        // it is guaranteed to run before the process exits.
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(applicationWillTerminate),
+            name: NSApplication.willTerminateNotification,
+            object: nil
+        )
+    }
+
+    /// Tears down all live surfaces on app termination: `TerminalSession
+    /// .terminate()` frees the Ghostty surface, which closes the PTY and
+    /// signals the child process group so shells don't outlive the app.
+    @objc private func applicationWillTerminate() {
+        for session in sessions {
+            session.terminate()
+        }
     }
 
     /// Opens a tab. When `inheritingCwd` is true, launches in the selected tab's cwd.
@@ -85,14 +98,6 @@ final class TabManager: ObservableObject {
     func runAgentInNewTab(_ agent: CustomAgent) {
         openSession({ makeAgentSession($0, agent) }, inheritingCwd: true)
         selectedSession?.markAsAgent(name: agent.name, colorHex: agent.colorHex)
-    }
-
-    /// Opens each shell script handed to the app (Finder "Open With", Dock
-    /// drops, `duti`) in its own tab, inheriting the selected tab's cwd.
-    func runScriptsInNewTabs(at urls: [URL]) {
-        for url in urls where url.isFileURL {
-            openSession({ TerminalSession(runningScriptAt: url.path, workingDirectory: $0) }, inheritingCwd: true)
-        }
     }
 
     private func openSession(_ factory: (String) -> TerminalSession, inheritingCwd: Bool) {

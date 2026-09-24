@@ -102,9 +102,7 @@ enum TermacTerminalConfig {
 
     /// Agent tabs boot the agent through a non-interactive login shell
     /// (`-l -c`: PATH from zprofile, no interactive zshrc/p10k init), then
-    /// hand the tab to a fresh login shell when the agent exits. Single
-    /// shell layer: the `exec`s collapse the boot shell away, so no
-    /// wrapper `/bin/sh` is needed to run the unset first.
+    /// hand the tab to a fresh login shell when the agent exits.
     static func makeAgentLaunchCommand(shellPath: String, agentCommand: String) -> String {
         // Plain `binary [args…]` commands skip the shell roundtrip entirely:
         // Ghostty execs the resolved binary itself (`direct:`), so the tab
@@ -114,8 +112,16 @@ enum TermacTerminalConfig {
             let commandLine = ([direct.path] + direct.arguments).joined(separator: " ")
             return "direct:\(commandLine)"
         }
+        return makeKeepOpenLoginShellCommand(shellPath: shellPath, command: agentCommand)
+    }
+
+    /// Runs `command` through a non-interactive login shell and hands the tab
+    /// to a fresh login shell on exit (Terminal.app's keep-open behavior).
+    /// Single shell layer: the `exec`s collapse the boot shell away, so no
+    /// wrapper `/bin/sh` is needed to run the unset first.
+    private static func makeKeepOpenLoginShellCommand(shellPath: String, command: String) -> String {
         let quotedShell = shellQuote(shellPath)
-        let script = "unset CLAUDE_CODE_CHILD_SESSION; \(agentCommand); exec \(quotedShell) -l"
+        let script = "unset CLAUDE_CODE_CHILD_SESSION; \(command); exec \(quotedShell) -l"
         return "shell:\(quotedShell) -l -c \(shellQuote(script))"
     }
 
@@ -173,15 +179,6 @@ enum TermacTerminalConfig {
             return true
         }
         return false
-    }
-
-    /// `.command` files dropped on the app run like agent tabs: the script
-    /// executes through a login shell, then the tab hands off to a fresh
-    /// login shell (matching Terminal.app's keep-open behavior). The quoted
-    /// path always routes through the shell chain — script paths may contain
-    /// spaces and `direct:` cannot express them.
-    static func makeScriptLaunchCommand(shellPath: String, scriptPath: String) -> String {
-        makeAgentLaunchCommand(shellPath: shellPath, agentCommand: shellQuote(scriptPath))
     }
 
     static func loginShell() -> String {

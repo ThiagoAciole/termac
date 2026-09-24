@@ -157,20 +157,6 @@ final class TerminalSession: NSObject, ObservableObject, Identifiable {
         )
     }
 
-    /// `.command` file tab: runs the script, titles the tab with the script
-    /// name, and keeps a login shell after the script exits.
-    convenience init(runningScriptAt path: String, workingDirectory: String) {
-        let shellPath = TermacTerminalConfig.loginShell()
-        self.init(
-            workingDirectory: workingDirectory,
-            launchCommand: TermacTerminalConfig.makeScriptLaunchCommand(
-                shellPath: shellPath,
-                scriptPath: path
-            ),
-            shellName: (path as NSString).lastPathComponent
-        )
-    }
-
     private init(workingDirectory: String, launchCommand: String, shellName: String) {
         let launchCwd = ProcessWorkingDirectory.isUsableDirectory(workingDirectory)
             ? workingDirectory

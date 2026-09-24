@@ -6,7 +6,6 @@
 import AppKit
 import OSLog
 import SwiftUI
-import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @State private var showingShortcuts = false
@@ -229,36 +228,8 @@ private struct WindowSettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
-            Section("Shell Scripts") {
-                Toggle(
-                    "Open .command files in a new tab",
-                    isOn: $settings.handlesCommandFiles
-                )
-
-                Button("Set Termac as Default for .command Files") {
-                    Task { await Self.becomeDefaultCommandHandler() }
-                }
-                .help("Registers Termac with LaunchServices as the handler for shell command files (same as `duti -s dev.thiagoaciole.termac com.apple.terminal.shell-script all`).")
-            }
         }
         .formStyle(.grouped)
-    }
-
-    /// Modern replacement for the deprecated `LSSetDefaultRoleHandlerForContentType`.
-    @MainActor
-    private static func becomeDefaultCommandHandler() async {
-        let logger = Logger(subsystem: "dev.termac", category: "settings")
-        // Target the .command type exactly; the generic shell-script parent
-        // would leave .command handlers untouched.
-        let commandType = UTType("com.apple.terminal.shell-script") ?? .shellScript
-        do {
-            try await NSWorkspace.shared.setDefaultApplication(
-                at: Bundle.main.bundleURL,
-                toOpen: commandType
-            )
-        } catch {
-            logger.error("Failed to register as .command default handler: \(error.localizedDescription, privacy: .public)")
-        }
     }
 }
 
