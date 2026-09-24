@@ -15,6 +15,7 @@ final class TabManager: ObservableObject {
     @Published private(set) var findQuery = ""
     /// Bumped when Find should re-focus the query field (e.g. ⌘F while already open).
     @Published private(set) var findFocusToken = 0
+    @Published private(set) var isCommandPalettePresented = false
 
     var selectedSession: TerminalSession? {
         sessions.first { $0.id == selectedID }
@@ -32,6 +33,8 @@ final class TabManager: ObservableObject {
     private let closeWindowHandler: (NSWindow?) -> Void
     private let shouldConfirmBusyClose: () -> Bool
     private let isSessionBusy: (TerminalSession) -> Bool
+    private let agentsProvider: () -> [CustomAgent]
+    private var closedTabSnapshots: [ClosedTabSnapshot] = []
 
     init(
         makeSession: ((String) -> TerminalSession)? = nil,
@@ -40,7 +43,8 @@ final class TabManager: ObservableObject {
         confirmClose: ((TerminalSession, @escaping () -> Void) -> Void)? = nil,
         closeWindow: ((NSWindow?) -> Void)? = nil,
         shouldConfirmBusyClose: (() -> Bool)? = nil,
-        isSessionBusy: ((TerminalSession) -> Bool)? = nil
+        isSessionBusy: ((TerminalSession) -> Bool)? = nil,
+        agentsProvider: (() -> [CustomAgent])? = nil
     ) {
         self.makeSession = makeSession ?? { TerminalSession(workingDirectory: $0) }
         self.makeAgentSession = makeAgentSession ?? {
@@ -53,6 +57,7 @@ final class TabManager: ObservableObject {
         self.shouldConfirmBusyClose = shouldConfirmBusyClose
             ?? { AppSettings.shared.confirmCloseRunningCommand }
         self.isSessionBusy = isSessionBusy ?? { $0.hasRunningCommand }
+        self.agentsProvider = agentsProvider ?? { AppSettings.shared.customAgents }
 
         if createInitialTab {
             newTab(inheritingCwd: false)
@@ -100,9 +105,129 @@ final class TabManager: ObservableObject {
         selectedSession?.markAsAgent(name: agent.name, colorHex: agent.colorHex)
     }
 
-    private func openSession(_ factory: (String) -> TerminalSession, inheritingCwd: Bool) {
+    func showCommandPalette() {
         dismissFindIfNeeded()
-        let cwd = Self.workingDirectoryForNewTab(
+        isCommandPalettePresented = true
+    }
+
+    func hideCommandPalette() {
+        isCommandPalettePresented = false
+    }
+
+    func togglePinSelected() {
+        guard let selectedSession else { return }
+        togglePin(selectedSession)
+    }
+
+    func commandPaletteItems() -> [CommandPaletteItem] {
+        var items: [CommandPaletteItem] = [
+            CommandPaletteItem(
+                id: "action-new-tab", title: "New Tab", subtitle: "⌘T", icon: "plus", kind: .action,
+                searchTerms: ["New Tab", "⌘T"]
+            ) { [weak self] in self?.newTab() },
+            CommandPaletteItem(
+                id: "action-close-tab", title: "Close Tab", subtitle: "⌘W", icon: "xmark", kind: .action,
+                searchTerms: ["Close Tab", "⌘W"]
+            ) { [weak self] in self?.closeSelected() },
+            CommandPaletteItem(
+                id: "action-reopen-tab", title: "Reopen Closed Tab", subtitle: "⌘⇧T",
+                icon: "arrow.uturn.backward", kind: .action, searchTerms: ["Reopen Closed Tab", "⌘⇧T"]
+            ) { [weak self] in self?.reopenClosedTab() },
+            CommandPaletteItem(
+                id: "action-duplicate-tab", title: "Duplicate Tab", icon: "plus.square.on.square",
+                kind: .action, searchTerms: ["Duplicate Tab", "Copy Tab"]
+            ) { [weak self] in self?.duplicateSelected() },
+            CommandPaletteItem(
+                id: "action-move-left", title: "Move Tab Left", subtitle: "⌘⇧←", icon: "arrow.left",
+                kind: .action, searchTerms: ["Move Tab Left", "⌘⇧←"]
+            ) { [weak self] in self?.moveSelectedLeft() },
+            CommandPaletteItem(
+                id: "action-move-right", title: "Move Tab Right", subtitle: "⌘⇧→", icon: "arrow.right",
+                kind: .action, searchTerms: ["Move Tab Right", "Move Right", "⌘⇧→"]
+            ) { [weak self] in self?.moveSelectedRight() },
+            CommandPaletteItem(
+                id: "action-pin-tab",
+                title: selectedSession?.isPinned == true ? "Unpin Tab" : "Pin Tab",
+                icon: "pin",
+                kind: .action,
+                searchTerms: ["Pin Tab", "Unpin Tab"]
+            ) { [weak self] in self?.togglePinSelected() },
+            CommandPaletteItem(
+                id: "action-find", title: "Find", subtitle: "⌘F", icon: "magnifyingglass", kind: .action,
+                searchTerms: ["Find", "Search", "⌘F"]
+            ) { [weak self] in self?.showFind() },
+        ]
+
+        items.append(contentsOf: sessions.map { session in
+            CommandPaletteItem(
+                id: "tab-\(session.id.uuidString)", title: session.title,
+                subtitle: session.id == selectedID ? "Current Tab" : nil,
+                icon: session.isPinned ? "pin.fill" : "terminal", kind: .tab,
+                searchTerms: [session.title, session.customTitle ?? ""]
+            ) { [weak self] in self?.select(session.id) }
+        })
+
+        items.append(contentsOf: agentsProvider().map { agent in
+            CommandPaletteItem(
+                id: "agent-\(agent.id)", title: agent.name, subtitle: agent.command,
+                icon: "sparkles", kind: .agent,
+                searchTerms: [agent.name, agent.command, "agent"]
+            ) { [weak self] in self?.runAgentInNewTab(agent) }
+        })
+        return items
+    }
+
+    func duplicateSelected() {
+        guard let session = selectedSession else { return }
+        if let agentName = session.agentName,
+           let agent = agentsProvider().first(where: { $0.name == agentName }) {
+            openSession({ makeAgentSession($0, agent) }, inheritingCwd: true)
+            selectedSession?.markAsAgent(name: agent.name, colorHex: agent.colorHex)
+        } else {
+            let cwd = session.resolvedWorkingDirectory
+            let customTitle = session.customTitle
+            openSession({ makeSession($0) }, inheritingCwd: false, workingDirectory: cwd)
+            selectedSession?.applyCustomTitle(customTitle ?? "")
+        }
+    }
+
+    func reopenClosedTab() {
+        guard let snapshot = closedTabSnapshots.popLast() else { return }
+        let session: TerminalSession
+        if let agentName = snapshot.agentName,
+           let agent = agentsProvider().first(where: { $0.name == agentName }) {
+            session = makeAgentSession(snapshot.workingDirectory, agent)
+            session.agentName = agent.name
+            session.agentColorHex = agent.colorHex
+        } else {
+            session = makeSession(snapshot.workingDirectory)
+        }
+        session.onExited = { [weak self] exited in self?.close(exited, fromShellExit: true) }
+        session.isPinned = snapshot.isPinned
+        session.applyCustomTitle(snapshot.customTitle ?? "")
+        let insertionIndex = min(max(snapshot.position, 0), sessions.count)
+        sessions.insert(session, at: insertionIndex)
+        roster.add(session.id)
+        roster.move(id: session.id, toIndex: insertionIndex)
+        selectedID = session.id
+    }
+
+    func moveSession(_ id: TerminalSession.ID, toIndex: Int) {
+        guard let sourceIndex = sessions.firstIndex(where: { $0.id == id }) else { return }
+        let session = sessions.remove(at: sourceIndex)
+        let destination = min(max(toIndex, 0), sessions.count)
+        sessions.insert(session, at: destination)
+        roster.move(id: id, toIndex: destination)
+        selectedID = roster.selectedID
+    }
+
+    private func openSession(
+        _ factory: (String) -> TerminalSession,
+        inheritingCwd: Bool,
+        workingDirectory: String? = nil
+    ) {
+        dismissFindIfNeeded()
+        let cwd = workingDirectory ?? Self.workingDirectoryForNewTab(
             inheritingCwd: inheritingCwd,
             selected: selectedSession?.resolvedWorkingDirectory
         )
@@ -173,6 +298,24 @@ final class TabManager: ObservableObject {
 
         if session.id == selectedID {
             dismissFindIfNeeded()
+        }
+
+        // Capture lightweight metadata before teardown so the tab can be reopened
+        // without retaining the old Ghostty surface, PTY, or scrollback.
+        if !fromShellExit, let position = sessions.firstIndex(where: { $0.id == session.id }) {
+            closedTabSnapshots.append(
+                ClosedTabSnapshot(
+                    workingDirectory: session.resolvedWorkingDirectory,
+                    customTitle: session.customTitle,
+                    isPinned: session.isPinned,
+                    agentName: session.agentName,
+                    agentColorHex: session.agentColorHex,
+                    position: position
+                )
+            )
+            if closedTabSnapshots.count > 10 {
+                closedTabSnapshots.removeFirst()
+            }
         }
 
         // Capture before teardown: after terminate the view may leave the hierarchy,

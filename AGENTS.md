@@ -29,6 +29,7 @@ Termac é um terminal macOS nativo mínimo (SwiftUI + [libghostty](https://githu
 | Terminal | `Termac/Terminal/` | `TerminalSession`, config do Ghostty, polling de título, find |
 | Tabs | `Termac/Tabs/` | `TabManager`, `TabRoster` (ordem/selection pura), barras de aba |
 | Agents | `Termac/Agents/` | `CustomAgent`, dropdown do header, settings de agentes |
+| Command Palette | `Termac/CommandPalette/` | Busca fuzzy e overlay de ações, abas e agentes |
 | Settings | `Termac/Settings/` | `AppSettings`, `TermacConfigStore` (YAML), temas, fontes, shortcuts |
 | Window | `Termac/Window/` | Chrome, drag region, geometria |
 | Testes | `TermacTests/` | Unit tests hospedeiros (Swift Testing `#expect`) |

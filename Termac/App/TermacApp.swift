@@ -108,6 +108,17 @@ private struct TermacCommands: Commands {
 
             Divider()
 
+            Button("Reopen Closed Tab") {
+                tabs?.reopenClosedTab()
+            }
+            .keyboardShortcut("t", modifiers: [.command, .shift])
+            .disabled(tabs == nil)
+
+            Button("Duplicate Tab") {
+                tabs?.duplicateSelected()
+            }
+            .disabled(tabs == nil)
+
             Button("Reload Configuration") {
                 AppSettings.shared.reloadFromDisk()
             }
@@ -115,6 +126,12 @@ private struct TermacCommands: Commands {
         }
 
         CommandGroup(after: .pasteboard) {
+            Button("Command Palette…") {
+                tabs?.showCommandPalette()
+            }
+            .keyboardShortcut("k", modifiers: .command)
+            .disabled(tabs == nil)
+
             Button("Find…") {
                 tabs?.showFind()
             }

@@ -179,6 +179,34 @@ struct TabRosterTests {
         #expect(roster.selectedID == nil)
     }
 
+    @Test func moveTabToIndexPreservesSelection() {
+        var roster = TabRoster()
+        let a = UUID()
+        let b = UUID()
+        let c = UUID()
+        roster.add(a)
+        roster.add(b)
+        roster.add(c)
+        roster.select(b)
+
+        roster.move(id: c, toIndex: 0)
+        #expect(roster.orderedIDs == [c, a, b])
+        #expect(roster.selectedID == b)
+    }
+
+    @Test func moveTabClampsDestination() {
+        var roster = TabRoster()
+        let a = UUID()
+        let b = UUID()
+        roster.add(a)
+        roster.add(b)
+
+        roster.move(id: a, toIndex: 100)
+        #expect(roster.orderedIDs == [b, a])
+        roster.move(id: a, toIndex: -100)
+        #expect(roster.orderedIDs == [a, b])
+    }
+
     @Test func applyOrderPinsToFrontAndKeepsSelection() {
         var roster = TabRoster()
         let a = UUID()

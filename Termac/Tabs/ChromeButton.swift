@@ -65,6 +65,16 @@ struct ChromeActionsCluster: View {
 
     var body: some View {
         HStack(spacing: 0) {
+            ChromeButton(
+                systemName: "command.square",
+                help: "Command Palette (⌘K)",
+                iconSize: settings.headerSize.actionIconSize * settings.actionIconScale * headerScale,
+                frameWidth: settings.headerSize.buttonFrameWidth * headerScale,
+                frameHeight: settings.headerSize.buttonFrameHeight * headerScale
+            ) {
+                tabs.showCommandPalette()
+            }
+
             AgentMenu(tabs: tabs)
 
             ChromeButton(

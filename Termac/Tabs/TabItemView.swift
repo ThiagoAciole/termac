@@ -13,6 +13,8 @@ struct TabItemView: View {
     let onClose: () -> Void
 
     let onTogglePin: () -> Void
+    let onDuplicate: () -> Void
+    let onMove: (UUID) -> Void
 
     @ObservedObject private var settings = AppSettings.shared
     @Environment(\.headerScale) private var headerScale
@@ -90,6 +92,15 @@ struct TabItemView: View {
         .contentShape(Rectangle())
         .help(session.title)
         .onTapGesture(perform: onSelect)
+        .draggable(TabDragID(id: session.id.uuidString))
+        .dropDestination(for: TabDragID.self) { dropped, _ in
+            guard let dragged = dropped.first,
+                  let draggedID = UUID(uuidString: dragged.id),
+                  draggedID != session.id
+            else { return false }
+            onMove(draggedID)
+            return true
+        }
         .onHover { hovering in
             withAnimation(.easeInOut(duration: 0.12)) {
                 isHovered = hovering
@@ -101,6 +112,7 @@ struct TabItemView: View {
                 isRenaming = true
             }
             Button(session.isPinned ? "Unpin Tab" : "Pin Tab", action: onTogglePin)
+            Button("Duplicate Tab", action: onDuplicate)
             Divider()
             Button("Close Tab", action: onClose)
         }

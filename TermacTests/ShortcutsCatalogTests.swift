@@ -15,8 +15,8 @@ struct ShortcutsCatalogTests {
         let items = ShortcutsCatalog.sections.flatMap(\.items)
         let menuOnlyIDs = [
             "new-window", "new-tab", "close-tab", "next-tab", "prev-tab",
-            "move-tab-left", "move-tab-right", "find",
-            "larger", "smaller", "actual-size", "reload-config",
+            "move-tab-left", "move-tab-right", "command-palette", "reopen-tab",
+            "duplicate-tab", "find", "larger", "smaller", "actual-size", "reload-config",
         ]
         for id in menuOnlyIDs {
             let item = try #require(items.first { $0.id == id })
