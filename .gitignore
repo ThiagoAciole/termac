@@ -16,3 +16,8 @@ xcuserdata/
 
 # Build output (o DMG de release fica versionado; o .app nunca)
 dist/Termac.app/
+
+# Screenshots soltos na raiz (mantidos localmente, não versionados)
+termac 1.png
+termac2.png
+termac3.png
