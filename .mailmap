@@ -1,0 +1,4 @@
+# Normaliza a autoria do histórico sem reescrever commits.
+# Formato: <nome canônico> <email canônico> <nome no commit> <email no commit>
+Thiago Aciole <thiagoaciole7@gmail.com> ThiagoAciole <thiagoaciole7@gmail.com>
+Thiago Aciole <thiagoaciole7@gmail.com> Thiago Aciole <thiago.aciole@ifood.com.br>
