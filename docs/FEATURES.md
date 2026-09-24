@@ -15,6 +15,15 @@ Termac é um terminal macOS nativo e minimalista (SwiftUI + [libghostty](https:/
 - **Fechar com comando rodando** — fechar aba com processo em foreground pede confirmação (toggle em Settings → Janela).
 - **Última aba** — fechar a última fecha a janela; se a shell sair na última, uma aba nova é aberta no lugar.
 
+## Command Palette
+
+- **Abrir** — botão Commands no header ou `⌘K`.
+- **Busca fuzzy** — encontra ações, abas e agentes por texto parcial (ex.: `cld`).
+- **Navegação** — `↑`/`↓` seleciona, `Enter` executa e `Esc` fecha.
+- **Ações de abas** — reabrir aba fechada (`⌘⇧T`), duplicar e mover.
+- **Drag-and-drop** — arraste uma aba para reordenar na barra horizontal ou no rail vertical.
+- A palette não intercepta comandos digitados no terminal.
+
 ## Agentes de IA
 
 - **Cadastro manual** — Settings → Agentes IA → **Add Agent…** (Nome + Comando + Cor). Nada é detectado do sistema: só roda o que você cadastrou.

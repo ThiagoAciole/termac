@@ -66,6 +66,14 @@ struct TabRoster {
         orderedIDs = sorted + omitted
     }
 
+    /// Moves any known tab to a clamped destination index, preserving selection.
+    mutating func move(id: UUID, toIndex: Int) {
+        guard let sourceIndex = orderedIDs.firstIndex(of: id), !orderedIDs.isEmpty else { return }
+        let item = orderedIDs.remove(at: sourceIndex)
+        let destination = min(max(toIndex, 0), orderedIDs.count)
+        orderedIDs.insert(item, at: destination)
+    }
+
     /// Removes `id` and updates selection to mirror `TabManager.close`.
     mutating func remove(id: UUID, fromShellExit: Bool) -> RemoveOutcome {
         guard let index = orderedIDs.firstIndex(of: id) else {

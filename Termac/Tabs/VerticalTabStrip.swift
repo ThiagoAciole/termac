@@ -51,7 +51,12 @@ struct VerticalTabStrip: View {
                                     fillsWidth: true,
                                     onSelect: { tabs.select(session.id) },
                                     onClose: { tabs.close(session) },
-                                    onTogglePin: { tabs.togglePin(session) }
+                                    onTogglePin: { tabs.togglePin(session) },
+                                    onDuplicate: { tabs.select(session.id); tabs.duplicateSelected() },
+                                    onMove: { draggedID in
+                                        guard let targetIndex = tabs.sessions.firstIndex(where: { $0.id == session.id }) else { return }
+                                        tabs.moveSession(draggedID, toIndex: targetIndex)
+                                    }
                                 )
                                 .id(session.id)
                             }

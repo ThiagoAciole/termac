@@ -12,21 +12,28 @@ struct ContentView: View {
 
     var body: some View {
         GeometryReader { geometry in
-            Group {
-                if settings.verticalTabs {
-                    verticalLayout
-                } else {
-                    horizontalLayout
+            ZStack {
+                Group {
+                    if settings.verticalTabs {
+                        verticalLayout
+                    } else {
+                        horizontalLayout
+                    }
+                }
+                .background(Theme.backgroundColor.id(settings.theme))
+                .ignoresSafeArea(.container, edges: .top)
+                .background(WindowChromeConfigurator())
+                .environment(
+                    \.headerScale,
+                    HeaderSizeSetting.scale(forWidth: geometry.size.width)
+                        * ZoomSetting.headerFactor(zoomPercent: settings.uiZoom)
+                )
+
+                if tabs.isCommandPalettePresented {
+                    CommandPaletteView(tabs: tabs)
+                        .zIndex(1)
                 }
             }
-            .background(Theme.backgroundColor.id(settings.theme))
-            .ignoresSafeArea(.container, edges: .top)
-            .background(WindowChromeConfigurator())
-            .environment(
-                \.headerScale,
-                HeaderSizeSetting.scale(forWidth: geometry.size.width)
-                    * ZoomSetting.headerFactor(zoomPercent: settings.uiZoom)
-            )
         }
     }
 
