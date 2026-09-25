@@ -10,14 +10,14 @@ import Testing
 struct TermacTerminalConfigTests {
     @Test func makeLaunchCommandForPlainPath() {
         let command = TermacTerminalConfig.makeLaunchCommand(shellPath: "/bin/zsh")
-        #expect(command == "shell:/bin/sh -c 'unset CLAUDE_CODE_CHILD_SESSION; exec '\\''/bin/zsh'\\'' -l'")
+        #expect(command == "shell:/bin/sh -c 'exec env -u CLAUDE_CODE_CHILD_SESSION '\\''/bin/zsh'\\'' -l'")
     }
 
     @Test func makeLaunchCommandForPathWithSpaces() {
         let command = TermacTerminalConfig.makeLaunchCommand(
             shellPath: "/opt/my shell/zsh"
         )
-        #expect(command == "shell:/bin/sh -c 'unset CLAUDE_CODE_CHILD_SESSION; exec '\\''/opt/my shell/zsh'\\'' -l'")
+        #expect(command == "shell:/bin/sh -c 'exec env -u CLAUDE_CODE_CHILD_SESSION '\\''/opt/my shell/zsh'\\'' -l'")
     }
 
     @Test func makeLaunchCommandForPathWithSingleQuote() {
@@ -32,7 +32,7 @@ struct TermacTerminalConfigTests {
     @Test func clearsClaudeChildSessionMarkerBeforeLoginShell() {
         let command = TermacTerminalConfig.makeLaunchCommand(shellPath: "/bin/zsh")
 
-        #expect(command.contains("unset CLAUDE_CODE_CHILD_SESSION;"))
+        #expect(command.contains("env -u CLAUDE_CODE_CHILD_SESSION"))
     }
 
     @Test func makeAgentLaunchCommandUsesDirectExecutionForPlainBinary() {
@@ -68,7 +68,7 @@ struct TermacTerminalConfigTests {
         // ...a fresh login shell taking over on exit (exec ... -l)...
         #expect(command.contains("; exec"))
         // ...and the child-session marker cleared before boot.
-        #expect(command.contains("unset CLAUDE_CODE_CHILD_SESSION;"))
+        #expect(command.contains("env -u CLAUDE_CODE_CHILD_SESSION"))
     }
 
     @Test func makeAgentLaunchCommandFallsBackForMissingBinary() {

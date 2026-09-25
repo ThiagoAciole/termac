@@ -22,7 +22,7 @@ final class AppSettings: ObservableObject {
     enum Defaults {
         static let lineHeight = 1.0
         /// Default terminal grid padding in points (inset of text from the window edges).
-        static let terminalPadding = 8
+        static let terminalPadding = 10
         static let windowColumns = 80
         static let windowRows = 24
         static let confirmCloseRunningCommand = true

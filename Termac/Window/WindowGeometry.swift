@@ -14,14 +14,17 @@ enum WindowGeometry {
         // Resolve .shared in the @MainActor body — default args are nonisolated.
         let settings = settings ?? .shared
         let cell = estimatedCellSize(from: settings)
-        let padding = CGFloat(settings.terminalPadding) * 2
+        let horizontalPadding = CGFloat(
+            TermacConstants.effectiveTerminalPaddingX(settings.terminalPadding)
+        ) * 2
+        let verticalPadding = CGFloat(settings.terminalPadding) * 2
         let chromeWidth = settings.verticalTabs
             ? CGFloat(settings.verticalTabBarWidth)
             : 0
-        let width = CGFloat(settings.windowColumns) * cell.width + padding + chromeWidth
+        let width = CGFloat(settings.windowColumns) * cell.width + horizontalPadding + chromeWidth
         let height = settings.headerSize.barHeight
             + CGFloat(settings.windowRows) * cell.height
-            + padding
+            + verticalPadding
         return CGSize(width: max(width, 200), height: max(height, 120))
     }
 
@@ -54,7 +57,9 @@ enum WindowGeometry {
     /// accounting for padding and the vertical tab rail.
     static func gridColumns(forPixelWidth pixels: CGFloat, settings: AppSettings) -> Int {
         let cell = estimatedCellSize(from: settings)
-        let padding = CGFloat(settings.terminalPadding) * 2
+        let padding = CGFloat(
+            TermacConstants.effectiveTerminalPaddingX(settings.terminalPadding)
+        ) * 2
         let chromeWidth: CGFloat = settings.verticalTabs
             ? CGFloat(settings.verticalTabBarWidth)
             : 0

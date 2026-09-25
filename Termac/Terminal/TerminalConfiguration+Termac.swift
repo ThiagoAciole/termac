@@ -45,7 +45,9 @@ enum TermacTerminalConfig {
             }
             builder.withCursorStyle(.block)
             builder.withCursorStyleBlink(true)
-            builder.withWindowPaddingX(settings.terminalPadding)
+            builder.withWindowPaddingX(
+                TermacConstants.effectiveTerminalPaddingX(settings.terminalPadding)
+            )
             builder.withWindowPaddingY(settings.terminalPadding)
             builder.withCustom("window-padding-balance", "true")
             builder.withCustom("window-padding-color", "extend")
@@ -94,9 +96,9 @@ enum TermacTerminalConfig {
     static func makeLaunchCommand(shellPath: String) -> String {
         let quoted = shellQuote(shellPath)
         // A Termac process can be opened from Claude Code and inherit its
-        // child-session marker. Clear it before starting every login shell so
-        // Claude launched in a new tab is treated as an independent session.
-        let command = "unset CLAUDE_CODE_CHILD_SESSION; exec \(quoted) -l"
+        // child-session marker. `env -u` is shell-neutral (unlike `unset`,
+        // which is not a fish builtin) and clears it before every login shell.
+        let command = "exec env -u CLAUDE_CODE_CHILD_SESSION \(quoted) -l"
         return "shell:/bin/sh -c \(shellQuote(command))"
     }
 
@@ -117,11 +119,12 @@ enum TermacTerminalConfig {
 
     /// Runs `command` through a non-interactive login shell and hands the tab
     /// to a fresh login shell on exit (Terminal.app's keep-open behavior).
-    /// Single shell layer: the `exec`s collapse the boot shell away, so no
-    /// wrapper `/bin/sh` is needed to run the unset first.
+    /// The environment is cleared with `env -u`, which works regardless of the
+    /// user's shell implementation.
     private static func makeKeepOpenLoginShellCommand(shellPath: String, command: String) -> String {
         let quotedShell = shellQuote(shellPath)
-        let script = "unset CLAUDE_CODE_CHILD_SESSION; \(command); exec \(quotedShell) -l"
+        let cleanShellCommand = "\(command); exec \(quotedShell) -l"
+        let script = "env -u CLAUDE_CODE_CHILD_SESSION \(quotedShell) -l -c \(shellQuote(cleanShellCommand))"
         return "shell:\(quotedShell) -l -c \(shellQuote(script))"
     }
 
