@@ -20,6 +20,7 @@ struct TermacApp: App {
         sanitizeInheritedEnvironment()
         // Load prefs early; do not touch NSApp here - it is still nil.
         _ = AppSettings.shared
+        WindowLifecycleCoordinator.shared.start()
     }
 
     var body: some Scene {

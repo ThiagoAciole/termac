@@ -31,8 +31,6 @@ struct AppSettingsTests {
 
         let settings = makeSettings(configURL: url)
         #expect(settings.terminalPadding == AppSettings.Defaults.terminalPadding)
-        #expect(settings.windowOriginX == AppSettings.Defaults.windowOriginX)
-        #expect(settings.windowOriginY == AppSettings.Defaults.windowOriginY)
         #expect(settings.windowColumns == AppSettings.Defaults.windowColumns)
         #expect(settings.windowRows == AppSettings.Defaults.windowRows)
         #expect(settings.confirmCloseRunningCommand == AppSettings.Defaults.confirmCloseRunningCommand)
@@ -44,20 +42,42 @@ struct AppSettingsTests {
         #expect(FileManager.default.fileExists(atPath: url.path))
     }
 
-    @Test func storedZeroPaddingAndOriginArePreserved() throws {
+    @Test func storedZeroPaddingIsPreserved() throws {
         let url = try makeTempConfigURL()
         defer { cleanup(url) }
 
         var config = TermacConfigFile.default
         config.window.padding = 0
-        config.window.originX = 0
-        config.window.originY = 0
         try TermacConfigStore.save(config, to: url)
 
         let settings = makeSettings(configURL: url)
         #expect(settings.terminalPadding == 0)
-        #expect(settings.windowOriginX == 0)
-        #expect(settings.windowOriginY == 0)
+    }
+
+    @Test func legacyOriginKeysAreIgnored() throws {
+        let url = try makeTempConfigURL()
+        defer { cleanup(url) }
+
+        let yaml = """
+        theme: Dark Modern
+        font:
+          family: ''
+          size: 15
+          weight: regular
+          line_height: 1.00
+        window:
+          padding: 8
+          origin_x: 480
+          origin_y: 220
+          columns: 80
+          rows: 24
+        """
+        try yaml.write(to: url, atomically: true, encoding: .utf8)
+
+        let config = try TermacConfigStore.load(from: url)
+        #expect(config.window.padding == 8)
+        #expect(config.window.columns == 80)
+        #expect(config.window.rows == 24)
     }
 
     @Test func fontSizeClampsToLimits() throws {
@@ -97,49 +117,61 @@ struct AppSettingsTests {
         #expect(settings.uiZoom == 80)
     }
 
-    @Test func chromeIconsRoundTripThroughConfig() throws {
+    @Test func legacyChromeIconKeysAreIgnored() throws {
+        let url = try makeTempConfigURL()
+        defer { cleanup(url) }
+
+        let yaml = """
+        theme: Dark Modern
+        header_size: regular
+        agents_menu_icon: sparkles
+        settings_menu_icon: gearshape
+        action_icon_scale: 1.35
+        """
+        try yaml.write(to: url, atomically: true, encoding: .utf8)
+
+        let config = try TermacConfigStore.load(from: url)
+        #expect(config.headerSize == "regular")
+        #expect(config.customAgents == AppSettings.Defaults.customAgents)
+    }
+
+    @Test func defaultHeaderIconsAreFixed() throws {
         let url = try makeTempConfigURL()
         defer { cleanup(url) }
 
         let settings = makeSettings(configURL: url)
-        settings.agentsIconSymbol = "sparkles"
-        settings.settingsIconSymbol = "gearshape"
-        settings.actionIconScale = 1.35
-        #expect(try TermacConfigStore.load(from: url).agentsMenuIcon == "sparkles")
+        #expect(settings.headerSize == AppSettings.Defaults.headerSize)
+        #expect(settings.showCommandPaletteButton == AppSettings.Defaults.showCommandPaletteButton)
+        #expect(settings.customAgents == AppSettings.Defaults.customAgents)
+    }
+
+    @Test func commandPaletteButtonPersistsAndReloads() throws {
+        let url = try makeTempConfigURL()
+        defer { cleanup(url) }
+
+        let settings = makeSettings(configURL: url)
+        settings.showCommandPaletteButton = false
+        #expect(try TermacConfigStore.load(from: url).showCommandPaletteButton == false)
 
         var config = try TermacConfigStore.load(from: url)
-        config.agentsMenuIcon = "terminal"
-        config.actionIconScale = 0.8
+        config.showCommandPaletteButton = true
         try TermacConfigStore.save(config, to: url)
         settings.reloadFromDisk()
-        #expect(settings.agentsIconSymbol == "terminal")
-        #expect(settings.settingsIconSymbol == "gearshape")
-        #expect(settings.actionIconScale == 0.8)
+        #expect(settings.showCommandPaletteButton)
     }
 
-    @Test func chromeIconsSanitizeUnknownSymbolsOnLoad() throws {
+    @Test func missingCommandPaletteButtonDefaultsToVisible() throws {
         let url = try makeTempConfigURL()
         defer { cleanup(url) }
 
-        var config = TermacConfigFile.default
-        config.agentsMenuIcon = "not-a-real-symbol"
-        config.settingsMenuIcon = "also-fake"
-        try TermacConfigStore.save(config, to: url)
+        let yaml = """
+        theme: Dark Modern
+        header_size: regular
+        """
+        try yaml.write(to: url, atomically: true, encoding: .utf8)
 
         let settings = makeSettings(configURL: url)
-        #expect(settings.agentsIconSymbol == ChromeIconOptions.agentsMenu[0])
-        #expect(settings.settingsIconSymbol == ChromeIconOptions.settingsMenu[0])
-    }
-
-    @Test func actionIconScaleClampsToLimits() throws {
-        let url = try makeTempConfigURL()
-        defer { cleanup(url) }
-
-        let settings = makeSettings(configURL: url)
-        settings.actionIconScale = 0.1
-        #expect(settings.actionIconScale == AppSettings.Limits.actionIconScale.lowerBound)
-        settings.actionIconScale = 9
-        #expect(settings.actionIconScale == AppSettings.Limits.actionIconScale.upperBound)
+        #expect(settings.showCommandPaletteButton)
     }
 
     @Test func terminalPaddingClampsToLimits() throws {
@@ -166,17 +198,6 @@ struct AppSettingsTests {
         #expect(settings.windowRows == AppSettings.Limits.windowRows.lowerBound)
         settings.windowRows = 10_000
         #expect(settings.windowRows == AppSettings.Limits.windowRows.upperBound)
-    }
-
-    @Test func windowOriginClampsToLimits() throws {
-        let url = try makeTempConfigURL()
-        defer { cleanup(url) }
-
-        let settings = makeSettings(configURL: url)
-        settings.windowOriginX = -10
-        #expect(settings.windowOriginX == AppSettings.Limits.windowOrigin.lowerBound)
-        settings.windowOriginY = 50_000
-        #expect(settings.windowOriginY == AppSettings.Limits.windowOrigin.upperBound)
     }
 
     @Test func zeroFontSizeUsesDefaultSize() throws {

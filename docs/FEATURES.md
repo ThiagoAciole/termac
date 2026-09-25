@@ -45,13 +45,13 @@ Termac é um terminal macOS nativo e minimalista (SwiftUI + [libghostty](https:/
 
 ## Settings
 
-Abre com ⌘, ou o botão de configurações. Os valores persistem em `~/.config/termac/config.yml` (criado com defaults no primeiro boot). Mudanças nas Settings gravam o arquivo na hora; editou à mão? **File → Reload Configuration** (⌘⇧,). Tamanho/posição de janela valem só para **novas** janelas.
+Abre com ⌘, ou o botão de configurações. Os valores persistem em `~/.config/termac/config.yml` (criado com defaults no primeiro boot). Mudanças nas Settings gravam o arquivo na hora; editou à mão? **File → Reload Configuration** (⌘⇧,). Tamanho da janela vale só para **novas** janelas, que sempre abrem centralizadas na tela visível.
 
 | Seção | Controles |
 | --- | --- |
 | **Aparência** | Tema (catálogo GhosttyTheme, Light/Dark), fonte (família, tamanho 8–32 px, line height 0.8–2.0×, peso), zoom de interface e terminal |
-| **Janela** | Confirmar fechamento com comando rodando (on), diretório no título (on), abas verticais (off), padding 0–64 px, posição X×Y a partir do topo-esquerda, tamanho em grid de caracteres (20–500 × 5–200, default 80×24) |
-| **Header** | Tamanho do chrome (compact/regular/large); **Right Buttons**: ícone do menu de agentes, ícone de configurações (SF Symbols curados) e tamanho dos dois (70–160%) |
+| **Janela** | Confirmar fechamento com comando rodando (on), diretório no título (on), abas verticais (off), padding 0–64 px, tamanho em pixels ajustado ao grid de caracteres (20–500 × 5–200, default 80×24); novas janelas abrem centralizadas |
+| **Header** | Tamanho do chrome (compact/regular/large); botão da Command Palette opcional; ícones fixos de Command Palette (`command`), Agentes IA (`apple.intelligence`) e Configurações (`ellipsis.circle`). O atalho ⌘K continua funcionando mesmo quando o botão está oculto |
 | **Agentes IA** | Lista de agentes cadastrados (Nome + Comando + Cor, editável), remover, **Add Agent…** |
 | **Atalhos** | Sheet somente leitura com a lista de atalhos |
 | **Configuração** | **Open Configuration…** abre o `config.yml` no editor padrão |

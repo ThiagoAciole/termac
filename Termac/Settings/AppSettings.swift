@@ -23,8 +23,6 @@ final class AppSettings: ObservableObject {
         static let lineHeight = 1.0
         /// Default terminal grid padding in points (inset of text from the window edges).
         static let terminalPadding = 8
-        static let windowOriginX = 0
-        static let windowOriginY = 0
         static let windowColumns = 80
         static let windowRows = 24
         static let confirmCloseRunningCommand = true
@@ -32,10 +30,8 @@ final class AppSettings: ObservableObject {
         static let verticalTabs = false
         static let verticalTabBarWidth = Int(TermacConstants.verticalTabBarWidth)
         static let headerSize = HeaderSizeSetting.regular
+        static let showCommandPaletteButton = true
         static let uiZoom = 100.0
-        static let agentsIconSymbol = "app.grid.2x2.topleft.filled"
-        static let settingsIconSymbol = "ellipsis.circle"
-        static let actionIconScale = 1.0
         static let customAgents: [CustomAgent] = [
             CustomAgent(name: "Tompero", command: "tompero start-day", colorHex: "#8E8E93"),
             CustomAgent(name: "Claude Code", command: "claude", colorHex: "#D97757"),
@@ -48,13 +44,11 @@ final class AppSettings: ObservableObject {
         static let fontSize = 8.0...32.0
         static let lineHeight = 0.8...2.0
         static let terminalPadding = 0...64
-        static let windowOrigin = 0...10_000
         static let windowColumns = 20...500
         static let windowRows = 5...200
         static let verticalTabBarWidth =
             Int(TermacConstants.verticalTabBarMinWidth)...Int(TermacConstants.verticalTabBarMaxWidth)
         static let uiZoom = 50.0...200.0
-        static let actionIconScale = 0.7...1.6
     }
 
     @Published var theme: String {
@@ -99,31 +93,9 @@ final class AppSettings: ObservableObject {
         }
     }
 
-    /// SF Symbol shown by the agents menu trigger.
-    @Published var agentsIconSymbol: String {
+    @Published var showCommandPaletteButton: Bool {
         didSet {
             guard !isLoading else { return }
-            persistAndNotify()
-        }
-    }
-
-    /// SF Symbol shown by the settings chrome button.
-    @Published var settingsIconSymbol: String {
-        didSet {
-            guard !isLoading else { return }
-            persistAndNotify()
-        }
-    }
-
-    /// Multiplier over the header size's action glyph size (see `HeaderSizeSetting.actionIconSize`).
-    @Published var actionIconScale: Double {
-        didSet {
-            guard !isLoading else { return }
-            let clamped = Self.clamp(actionIconScale, to: Limits.actionIconScale)
-            if clamped != actionIconScale {
-                actionIconScale = clamped
-                return
-            }
             persistAndNotify()
         }
     }
@@ -165,30 +137,6 @@ final class AppSettings: ObservableObject {
             let clamped = Self.clamp(terminalPadding, to: Limits.terminalPadding)
             if clamped != terminalPadding {
                 terminalPadding = clamped
-                return
-            }
-            persistAndNotify()
-        }
-    }
-
-    @Published var windowOriginX: Int {
-        didSet {
-            guard !isLoading else { return }
-            let clamped = Self.clamp(windowOriginX, to: Limits.windowOrigin)
-            if clamped != windowOriginX {
-                windowOriginX = clamped
-                return
-            }
-            persistAndNotify()
-        }
-    }
-
-    @Published var windowOriginY: Int {
-        didSet {
-            guard !isLoading else { return }
-            let clamped = Self.clamp(windowOriginY, to: Limits.windowOrigin)
-            if clamped != windowOriginY {
-                windowOriginY = clamped
                 return
             }
             persistAndNotify()
@@ -275,21 +223,17 @@ final class AppSettings: ObservableObject {
         fontSize = Double(TerminalFont.defaultSize)
         fontWeight = .regular
         headerSize = Defaults.headerSize
+        showCommandPaletteButton = Defaults.showCommandPaletteButton
         uiZoom = Defaults.uiZoom
         customAgents = Defaults.customAgents
         lineHeight = Defaults.lineHeight
         terminalPadding = Defaults.terminalPadding
-        windowOriginX = Defaults.windowOriginX
-        windowOriginY = Defaults.windowOriginY
         windowColumns = Defaults.windowColumns
         windowRows = Defaults.windowRows
         confirmCloseRunningCommand = Defaults.confirmCloseRunningCommand
         showCwdInTabTitle = Defaults.showCwdInTabTitle
         verticalTabs = Defaults.verticalTabs
         verticalTabBarWidth = Defaults.verticalTabBarWidth
-        agentsIconSymbol = Defaults.agentsIconSymbol
-        settingsIconSymbol = Defaults.settingsIconSymbol
-        actionIconScale = Defaults.actionIconScale
 
         apply(Self.loadOrCreate(at: configURL))
         Theme.reloadSelection(theme)
@@ -370,21 +314,11 @@ final class AppSettings: ObservableObject {
         fontSize = Self.resolvedFontSize(Double(config.font.size))
         fontWeight = FontWeightSetting(rawValue: config.font.weight) ?? .regular
         headerSize = HeaderSizeSetting(rawValue: config.headerSize) ?? .regular
-        agentsIconSymbol = ChromeIconOptions.sanitized(
-            config.agentsMenuIcon,
-            from: ChromeIconOptions.agentsMenu
-        )
-        settingsIconSymbol = ChromeIconOptions.sanitized(
-            config.settingsMenuIcon,
-            from: ChromeIconOptions.settingsMenu
-        )
-        actionIconScale = Self.clamp(config.actionIconScale, to: Limits.actionIconScale)
+        showCommandPaletteButton = config.showCommandPaletteButton
         uiZoom = Self.clamp(config.zoom, to: Limits.uiZoom)
         customAgents = config.customAgents
         lineHeight = Self.clamp(config.font.lineHeight, to: Limits.lineHeight)
         terminalPadding = Self.clamp(config.window.padding, to: Limits.terminalPadding)
-        windowOriginX = Self.clamp(config.window.originX, to: Limits.windowOrigin)
-        windowOriginY = Self.clamp(config.window.originY, to: Limits.windowOrigin)
         windowColumns = Self.clamp(config.window.columns, to: Limits.windowColumns)
         windowRows = Self.clamp(config.window.rows, to: Limits.windowRows)
         confirmCloseRunningCommand = config.confirmCloseRunningCommand
@@ -462,8 +396,6 @@ final class AppSettings: ObservableObject {
             ),
             window: .init(
                 padding: terminalPadding,
-                originX: windowOriginX,
-                originY: windowOriginY,
                 columns: windowColumns,
                 rows: windowRows
             ),
@@ -473,9 +405,7 @@ final class AppSettings: ObservableObject {
             verticalTabs: verticalTabs,
             verticalTabBarWidth: verticalTabBarWidth,
             headerSize: headerSize.rawValue,
-            agentsMenuIcon: agentsIconSymbol,
-            settingsMenuIcon: settingsIconSymbol,
-            actionIconScale: actionIconScale,
+            showCommandPaletteButton: showCommandPaletteButton,
             customAgents: customAgents
         )
     }
@@ -511,8 +441,7 @@ final class AppSettings: ObservableObject {
         let defaults = UserDefaults.standard
         let legacyKeys = [
             "theme", "fontFamily", "fontSize", "fontWeight", "lineHeight",
-            "terminalPadding", "windowOriginX", "windowOriginY",
-            "windowColumns", "windowRows",
+            "terminalPadding", "windowColumns", "windowRows",
         ]
         let hasAny = legacyKeys.contains { defaults.object(forKey: $0) != nil }
         guard hasAny else { return nil }
@@ -542,18 +471,6 @@ final class AppSettings: ObservableObject {
             config.window.padding = clamp(
                 defaults.integer(forKey: "terminalPadding"),
                 to: Limits.terminalPadding
-            )
-        }
-        if defaults.object(forKey: "windowOriginX") != nil {
-            config.window.originX = clamp(
-                defaults.integer(forKey: "windowOriginX"),
-                to: Limits.windowOrigin
-            )
-        }
-        if defaults.object(forKey: "windowOriginY") != nil {
-            config.window.originY = clamp(
-                defaults.integer(forKey: "windowOriginY"),
-                to: Limits.windowOrigin
             )
         }
         if defaults.object(forKey: "windowColumns") != nil {

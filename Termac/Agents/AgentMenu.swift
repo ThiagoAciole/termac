@@ -38,8 +38,8 @@ struct AgentMenu: View {
             // Same glyph structure as ChromeButton — the legacy borderless
             // menu style shrank menu labels to menu-bar metrics.
             ChromeIconLabel(
-                systemName: settings.agentsIconSymbol,
-                iconSize: settings.headerSize.actionIconSize * settings.actionIconScale * headerScale,
+                systemName: "apple.intelligence",
+                iconSize: settings.headerSize.actionIconSize * headerScale,
                 frameWidth: settings.headerSize.buttonFrameWidth * headerScale,
                 frameHeight: settings.headerSize.buttonFrameHeight * headerScale
             )

@@ -100,15 +100,11 @@ struct TermacConfigFile: Codable, Equatable {
 
     struct Window: Codable, Equatable {
         var padding: Int
-        var originX: Int
-        var originY: Int
         var columns: Int
         var rows: Int
 
         enum CodingKeys: String, CodingKey {
             case padding
-            case originX = "origin_x"
-            case originY = "origin_y"
             case columns
             case rows
         }
@@ -116,17 +112,13 @@ struct TermacConfigFile: Codable, Equatable {
         static var `default`: Window {
             Window(
                 padding: AppSettings.Defaults.terminalPadding,
-                originX: AppSettings.Defaults.windowOriginX,
-                originY: AppSettings.Defaults.windowOriginY,
                 columns: AppSettings.Defaults.windowColumns,
                 rows: AppSettings.Defaults.windowRows
             )
         }
 
-        init(padding: Int, originX: Int, originY: Int, columns: Int, rows: Int) {
+        init(padding: Int, columns: Int, rows: Int) {
             self.padding = padding
-            self.originX = originX
-            self.originY = originY
             self.columns = columns
             self.rows = rows
         }
@@ -135,8 +127,6 @@ struct TermacConfigFile: Codable, Equatable {
             let defaults = Window.default
             let container = try decoder.container(keyedBy: CodingKeys.self)
             padding = try container.decodeIfPresent(Int.self, forKey: .padding) ?? defaults.padding
-            originX = try container.decodeIfPresent(Int.self, forKey: .originX) ?? defaults.originX
-            originY = try container.decodeIfPresent(Int.self, forKey: .originY) ?? defaults.originY
             columns = try container.decodeIfPresent(Int.self, forKey: .columns) ?? defaults.columns
             rows = try container.decodeIfPresent(Int.self, forKey: .rows) ?? defaults.rows
         }
@@ -157,12 +147,8 @@ struct TermacConfigFile: Codable, Equatable {
     var verticalTabBarWidth: Int
     /// Header chrome scale (see `HeaderSizeSetting`).
     var headerSize: String
-    /// SF Symbol for the agents menu trigger.
-    var agentsMenuIcon: String
-    /// SF Symbol for the settings chrome button.
-    var settingsMenuIcon: String
-    /// Multiplier over the header size's action glyph size.
-    var actionIconScale: Double
+    /// Whether the Command Palette button is shown in the header.
+    var showCommandPaletteButton: Bool
     /// User-added CLI AI agents.
     var customAgents: [CustomAgent]
 
@@ -176,9 +162,7 @@ struct TermacConfigFile: Codable, Equatable {
         case verticalTabs = "vertical_tabs"
         case verticalTabBarWidth = "vertical_tab_bar_width"
         case headerSize = "header_size"
-        case agentsMenuIcon = "agents_menu_icon"
-        case settingsMenuIcon = "settings_menu_icon"
-        case actionIconScale = "action_icon_scale"
+        case showCommandPaletteButton = "show_command_palette_button"
         case customAgents = "custom_agents"
     }
 
@@ -193,9 +177,7 @@ struct TermacConfigFile: Codable, Equatable {
             verticalTabs: AppSettings.Defaults.verticalTabs,
             verticalTabBarWidth: AppSettings.Defaults.verticalTabBarWidth,
             headerSize: AppSettings.Defaults.headerSize.rawValue,
-            agentsMenuIcon: AppSettings.Defaults.agentsIconSymbol,
-            settingsMenuIcon: AppSettings.Defaults.settingsIconSymbol,
-            actionIconScale: AppSettings.Defaults.actionIconScale,
+            showCommandPaletteButton: AppSettings.Defaults.showCommandPaletteButton,
             customAgents: AppSettings.Defaults.customAgents
         )
     }
@@ -210,9 +192,7 @@ struct TermacConfigFile: Codable, Equatable {
         verticalTabs: Bool = AppSettings.Defaults.verticalTabs,
         verticalTabBarWidth: Int = AppSettings.Defaults.verticalTabBarWidth,
         headerSize: String = AppSettings.Defaults.headerSize.rawValue,
-        agentsMenuIcon: String = AppSettings.Defaults.agentsIconSymbol,
-        settingsMenuIcon: String = AppSettings.Defaults.settingsIconSymbol,
-        actionIconScale: Double = AppSettings.Defaults.actionIconScale,
+        showCommandPaletteButton: Bool = AppSettings.Defaults.showCommandPaletteButton,
         customAgents: [CustomAgent] = AppSettings.Defaults.customAgents
     ) {
         self.theme = theme
@@ -224,9 +204,7 @@ struct TermacConfigFile: Codable, Equatable {
         self.verticalTabs = verticalTabs
         self.verticalTabBarWidth = verticalTabBarWidth
         self.headerSize = headerSize
-        self.agentsMenuIcon = agentsMenuIcon
-        self.settingsMenuIcon = settingsMenuIcon
-        self.actionIconScale = actionIconScale
+        self.showCommandPaletteButton = showCommandPaletteButton
         self.customAgents = customAgents
     }
 
@@ -241,9 +219,7 @@ struct TermacConfigFile: Codable, Equatable {
         try container.encode(verticalTabs, forKey: .verticalTabs)
         try container.encode(verticalTabBarWidth, forKey: .verticalTabBarWidth)
         try container.encode(headerSize, forKey: .headerSize)
-        try container.encode(agentsMenuIcon, forKey: .agentsMenuIcon)
-        try container.encode(settingsMenuIcon, forKey: .settingsMenuIcon)
-        try container.encode(TwoDecimalFloat(actionIconScale), forKey: .actionIconScale)
+        try container.encode(showCommandPaletteButton, forKey: .showCommandPaletteButton)
         try container.encode(customAgents, forKey: .customAgents)
     }
 
@@ -275,18 +251,10 @@ struct TermacConfigFile: Codable, Equatable {
             String.self,
             forKey: .headerSize
         ) ?? defaults.headerSize
-        agentsMenuIcon = try container.decodeIfPresent(
-            String.self,
-            forKey: .agentsMenuIcon
-        ) ?? defaults.agentsMenuIcon
-        settingsMenuIcon = try container.decodeIfPresent(
-            String.self,
-            forKey: .settingsMenuIcon
-        ) ?? defaults.settingsMenuIcon
-        actionIconScale = try container.decodeIfPresent(
-            TwoDecimalFloat.self,
-            forKey: .actionIconScale
-        )?.value ?? defaults.actionIconScale
+        showCommandPaletteButton = try container.decodeIfPresent(
+            Bool.self,
+            forKey: .showCommandPaletteButton
+        ) ?? defaults.showCommandPaletteButton
         customAgents = try container.decodeIfPresent(
             [CustomAgent].self,
             forKey: .customAgents

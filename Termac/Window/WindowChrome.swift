@@ -16,6 +16,42 @@ struct WindowDragRegion: NSViewRepresentable {
     func updateNSView(_ nsView: NSView, context: Context) {}
 }
 
+@MainActor
+final class WindowLifecycleCoordinator {
+    static let shared = WindowLifecycleCoordinator()
+
+    private var observer: NSObjectProtocol?
+
+    private init() {}
+
+    func start() {
+        guard observer == nil else { return }
+        observer = NotificationCenter.default.addObserver(
+            forName: NSWindow.willCloseNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let window = notification.object as? NSWindow else { return }
+            self?.terminalWindowWillClose(window)
+        }
+    }
+
+    private func terminalWindowWillClose(_ window: NSWindow) {
+        guard window.termacDidApplyChromeStyle else { return }
+
+        let hasAnotherTerminalWindow = NSApp.windows.contains { candidate in
+            candidate !== window
+                && candidate.termacDidApplyChromeStyle
+        }
+        guard !hasAnotherTerminalWindow else { return }
+
+        for candidate in NSApp.windows where candidate !== window {
+            guard !candidate.termacDidApplyChromeStyle else { continue }
+            candidate.close()
+        }
+    }
+}
+
 private final class WindowDragNSView: NSView {
     override var mouseDownCanMoveWindow: Bool { true }
 

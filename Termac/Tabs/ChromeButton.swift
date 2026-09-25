@@ -64,23 +64,25 @@ struct ChromeActionsCluster: View {
     @Environment(\.headerScale) private var headerScale
 
     var body: some View {
-        HStack(spacing: 0) {
-            ChromeButton(
-                systemName: "command.square",
-                help: "Command Palette (⌘K)",
-                iconSize: settings.headerSize.actionIconSize * settings.actionIconScale * headerScale,
-                frameWidth: settings.headerSize.buttonFrameWidth * headerScale,
-                frameHeight: settings.headerSize.buttonFrameHeight * headerScale
-            ) {
-                tabs.showCommandPalette()
+        HStack(spacing: 5) {
+            if settings.showCommandPaletteButton {
+                ChromeButton(
+                    systemName: "command",
+                    help: "Command Palette (⌘K)",
+                    iconSize: settings.headerSize.actionIconSize * headerScale,
+                    frameWidth: settings.headerSize.buttonFrameWidth * headerScale,
+                    frameHeight: settings.headerSize.buttonFrameHeight * headerScale
+                ) {
+                    tabs.showCommandPalette()
+                }
             }
 
             AgentMenu(tabs: tabs)
 
             ChromeButton(
-                systemName: settings.settingsIconSymbol,
+                systemName: "ellipsis.circle",
                 help: "Settings",
-                iconSize: settings.headerSize.actionIconSize * settings.actionIconScale * headerScale,
+                iconSize: settings.headerSize.actionIconSize * headerScale,
                 frameWidth: settings.headerSize.buttonFrameWidth * headerScale,
                 frameHeight: settings.headerSize.buttonFrameHeight * headerScale
             ) {

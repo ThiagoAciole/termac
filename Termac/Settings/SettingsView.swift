@@ -22,11 +22,6 @@ struct SettingsView: View {
                     Label("Janela", systemImage: "macwindow")
                 }
 
-            HeaderSettingsView()
-                .tabItem {
-                    Label("Header", systemImage: "rectangle.topthird.inset.filled")
-                }
-
             AgentsSettingsView()
                 .tabItem {
                     Label("Agentes IA", systemImage: "sparkles")
@@ -144,7 +139,7 @@ private struct WindowSettingsView: View {
 
     var body: some View {
         Form {
-            Section("Window") {
+            Section("Behavior") {
                 Toggle(
                     "Confirm before closing tabs with a running command",
                     isOn: $settings.confirmCloseRunningCommand
@@ -159,7 +154,9 @@ private struct WindowSettingsView: View {
                     "Vertical tabs",
                     isOn: $settings.verticalTabs
                 )
+            }
 
+            Section("Padding") {
                 LabeledContent("Padding") {
                     HStack(spacing: 4) {
                         TextField(
@@ -174,106 +171,80 @@ private struct WindowSettingsView: View {
                             .foregroundStyle(.secondary)
                     }
                 }
+            }
 
-                LabeledContent("Position") {
-                    HStack(spacing: 8) {
-                        TextField(
-                            "",
-                            value: $settings.windowOriginX,
-                            format: .number
-                        )
-                        .frame(width: 48)
-                        .textFieldStyle(.roundedBorder)
-                        .multilineTextAlignment(.trailing)
-                        Text("×")
-                            .foregroundStyle(.secondary)
-                        TextField(
-                            "",
-                            value: $settings.windowOriginY,
-                            format: .number
-                        )
-                        .frame(width: 48)
-                        .textFieldStyle(.roundedBorder)
-                        .multilineTextAlignment(.trailing)
-                    }
-                }
-                Text("Position from the top-left of the visible desktop")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-
+            Section("Size") {
                 LabeledContent("Size") {
-                    HStack(spacing: 8) {
+                    HStack(spacing: 4) {
                         TextField(
                             "",
-                            value: $settings.windowColumns,
+                            value: pixelWidth,
                             format: .number
                         )
-                        .frame(width: 48)
+                        .frame(width: 64)
                         .textFieldStyle(.roundedBorder)
                         .multilineTextAlignment(.trailing)
                         Text("×")
                             .foregroundStyle(.secondary)
                         TextField(
                             "",
-                            value: $settings.windowRows,
+                            value: pixelHeight,
                             format: .number
                         )
-                        .frame(width: 48)
+                        .frame(width: 64)
                         .textFieldStyle(.roundedBorder)
                         .multilineTextAlignment(.trailing)
+                        Text("px")
+                            .foregroundStyle(.secondary)
                     }
                 }
-                Text("Size of new windows (e.g. 80 × 24)")
+                Text("Size of new windows in pixels")
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
 
-        }
-        .formStyle(.grouped)
-    }
-}
-
-private struct HeaderSettingsView: View {
-    @ObservedObject private var settings = AppSettings.shared
-
-    var body: some View {
-        Form {
             Section("Header") {
                 Picker("Size", selection: $settings.headerSize) {
                     ForEach(HeaderSizeSetting.allCases) { size in
                         Text(size.displayName).tag(size)
                     }
                 }
-            }
 
-            Section("Right Buttons") {
-                Picker("Agents icon", selection: $settings.agentsIconSymbol) {
-                    ForEach(ChromeIconOptions.agentsMenu, id: \.self) { name in
-                        Label(name, systemImage: name).tag(name)
-                    }
-                }
-
-                Picker("Settings icon", selection: $settings.settingsIconSymbol) {
-                    ForEach(ChromeIconOptions.settingsMenu, id: \.self) { name in
-                        Label(name, systemImage: name).tag(name)
-                    }
-                }
-
-                LabeledContent("Icon size") {
-                    HStack(spacing: 8) {
-                        Text("\(Int((settings.actionIconScale * 100).rounded()))%")
-                            .monospacedDigit()
-                            .frame(width: 44, alignment: .trailing)
-                        Slider(
-                            value: $settings.actionIconScale,
-                            in: AppSettings.Limits.actionIconScale,
-                            step: 0.05
-                        )
-                    }
-                }
+                Toggle(
+                    "Show Command Palette button",
+                    isOn: $settings.showCommandPaletteButton
+                )
             }
         }
         .formStyle(.grouped)
+    }
+
+    /// Window width in pixels, derived from the persisted grid columns
+    /// (plus padding and the vertical rail). Editing converts back to grid.
+    private var pixelWidth: Binding<Double> {
+        Binding<Double>(
+            get: { WindowGeometry.contentSize(from: settings).width },
+            set: {
+                settings.windowColumns = WindowGeometry.gridColumns(
+                    forPixelWidth: CGFloat($0),
+                    settings: settings
+                )
+            }
+        )
+    }
+
+    /// Window height in pixels, derived from the persisted grid rows
+    /// (plus padding and the header bar). Editing converts back to grid.
+    private var pixelHeight: Binding<Double> {
+        Binding<Double>(
+            get: { WindowGeometry.contentSize(from: settings).height },
+            set: {
+                settings.windowRows = WindowGeometry.gridRows(
+                    forPixelHeight: CGFloat($0),
+                    settings: settings
+                )
+            }
+        )
     }
 }
 
