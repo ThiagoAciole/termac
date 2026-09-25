@@ -10,24 +10,11 @@ struct ShortcutsView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Form {
-                ForEach(ShortcutsCatalog.sections) { section in
-                    Section(section.title) {
-                        ForEach(section.items) { item in
-                            LabeledContent(item.title) {
-                                Text(item.keys)
-                                    .font(.body.monospaced())
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                    }
-                }
-            }
-            .formStyle(.grouped)
+            ShortcutsListView()
 
             HStack {
                 Spacer()
-                Button("Done") {
+                Button("Concluído") {
                     dismiss()
                 }
                 .keyboardShortcut(.defaultAction)
@@ -35,6 +22,6 @@ struct ShortcutsView: View {
             .padding(.horizontal, 20)
             .padding(.bottom, 16)
         }
-        .frame(width: 420, height: 340)
+        .frame(width: 420, height: 420)
     }
 }

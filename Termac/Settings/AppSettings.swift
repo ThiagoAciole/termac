@@ -18,6 +18,7 @@ final class AppSettings: ObservableObject {
     private let configURL: URL
     private let persistDebounce: Duration
     private var persistTask: Task<Void, Never>?
+    @Published private(set) var configurationStatus = "Configuração carregada"
 
     enum Defaults {
         static let lineHeight = 1.0
@@ -241,6 +242,21 @@ final class AppSettings: ObservableObject {
         observeAppTermination()
     }
 
+    var configurationPathDisplay: String {
+        configURL.path
+    }
+
+    /// Restore all settings to their defaults and persist them.
+    func resetToDefaults() {
+        isLoading = true
+        apply(.default)
+        isLoading = false
+        Theme.reloadSelection(theme)
+        applyAppAppearance()
+        persistAndNotify()
+        configurationStatus = "Configuração restaurada"
+    }
+
     /// Re-read `config.yml` and apply (File → Reload Configuration).
     func reloadFromDisk() {
         let config: TermacConfigFile
@@ -259,6 +275,7 @@ final class AppSettings: ObservableObject {
         Theme.reloadSelection(theme)
         applyAppAppearance()
         NotificationCenter.default.post(name: .termacSettingsDidChange, object: nil)
+        configurationStatus = "Configuração recarregada"
     }
 
     /// Ensure the config file exists, then open it in a text editor (Ghostty-style).
@@ -270,6 +287,7 @@ final class AppSettings: ObservableObject {
             // Still try to open; editor may create or show an error.
         }
         TermacConfigStore.openInEditor(url: configURL)
+        configurationStatus = "Configuração aberta"
     }
 
     func addCustomAgent(name: String, command: String, colorHex: String = "#8E8E93") {
@@ -280,6 +298,24 @@ final class AppSettings: ObservableObject {
 
     func removeCustomAgent(_ spec: CustomAgent) {
         customAgents.removeAll { $0.command == spec.command }
+    }
+
+    func updateCustomAgent(
+        _ original: CustomAgent,
+        name: String,
+        command: String,
+        colorHex: String
+    ) {
+        let trimmedCommand = command.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedCommand.isEmpty,
+              !customAgents.contains(where: { $0.command == trimmedCommand && $0.command != original.command })
+        else { return }
+        guard let index = customAgents.firstIndex(where: { $0.command == original.command }) else { return }
+        customAgents[index] = CustomAgent(
+            name: name.isEmpty ? trimmedCommand : name,
+            command: trimmedCommand,
+            colorHex: colorHex
+        )
     }
 
     func increaseZoom() {

@@ -49,12 +49,12 @@ Abre com ⌘, ou o botão de configurações. Os valores persistem em `~/.config
 
 | Seção | Controles |
 | --- | --- |
-| **Aparência** | Tema (catálogo GhosttyTheme, Light/Dark), fonte (família, tamanho 8–32 px, line height 0.8–2.0×, peso), zoom de interface e terminal |
-| **Janela** | Confirmar fechamento com comando rodando (on), diretório no título (on), abas verticais (off), padding 0–64 px, tamanho em pixels ajustado ao grid de caracteres (20–500 × 5–200, default 80×24); novas janelas abrem centralizadas |
-| **Header** | Tamanho do chrome (compact/regular/large); botão da Command Palette opcional; ícones fixos de Command Palette (`command`), Agentes IA (`apple.intelligence`) e Configurações (`ellipsis.circle`). O atalho ⌘K continua funcionando mesmo quando o botão está oculto |
-| **Agentes IA** | Lista de agentes cadastrados (Nome + Comando + Cor, editável), remover, **Add Agent…** |
-| **Atalhos** | Sheet somente leitura com a lista de atalhos |
-| **Configuração** | **Open Configuration…** abre o `config.yml` no editor padrão |
+| **Aparência** | Tema claro/escuro, fonte (família, tamanho 8–32 px, altura da linha 0.8–2.0×, peso), zoom da interface e do terminal |
+| **Janela** | Comportamento das abas, espaçamento efetivo do terminal, tamanho em pixels de novas janelas (ajustado ao grid) e cabeçalho. Novas janelas abrem centralizadas |
+| **Cabeçalho** | Tamanho do chrome (compacto/regular/grande) e visibilidade opcional do botão da Command Palette. O atalho ⌘K continua funcionando quando o botão está oculto |
+| **Agentes IA** | Lista de agentes cadastrados (nome, comando e cor), remoção e **Adicionar agente…** |
+| **Atalhos** | Lista pesquisável de atalhos, somente leitura |
+| **Configuração** | Caminho/status do `config.yml`, abrir, recarregar e restaurar padrões |
 
 ## Atalhos de teclado
 

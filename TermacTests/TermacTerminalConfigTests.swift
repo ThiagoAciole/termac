@@ -8,6 +8,12 @@ import Testing
 
 @MainActor
 struct TermacTerminalConfigTests {
+    @Test func effectiveTerminalPaddingAddsFixedHorizontalInset() {
+        #expect(TermacConstants.effectiveTerminalPaddingX(0) == 16)
+        #expect(TermacConstants.effectiveTerminalPaddingX(10) == 26)
+        #expect(TermacConstants.effectiveTerminalPaddingX(20) == 36)
+    }
+
     @Test func makeLaunchCommandForPlainPath() {
         let command = TermacTerminalConfig.makeLaunchCommand(shellPath: "/bin/zsh")
         #expect(command == "shell:/bin/sh -c 'exec env -u CLAUDE_CODE_CHILD_SESSION '\\''/bin/zsh'\\'' -l'")

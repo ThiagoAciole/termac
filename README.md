@@ -72,6 +72,8 @@ Já clonou sem os submódulos? `git submodule update --init --recursive`.
 
 Build e rode o scheme **Termac**. O App Sandbox fica **off** de propósito — o Ghostty precisa spawnar uma shell real (`.exec`). Para gerar o DMG assinado: `./Script/make-dmg.sh`.
 
+Cada push na `main` publica ou atualiza automaticamente a GitHub Release da versão definida no Xcode, desde que os secrets de assinatura estejam configurados. A release inclui DMG, ZIP, checksums SHA-256 e, quando possível, atualiza o cask Homebrew.
+
 ## 🤖 Para IAs e contribuidores
 
 O [AGENTS.md](AGENTS.md) concentra o guia operacional: comandos de build/teste, mapa de código, fluxo de agentes e invariantes do projeto.

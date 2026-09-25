@@ -32,7 +32,9 @@ final class WindowLifecycleCoordinator {
             queue: .main
         ) { [weak self] notification in
             guard let window = notification.object as? NSWindow else { return }
-            self?.terminalWindowWillClose(window)
+            MainActor.assumeIsolated {
+                self?.terminalWindowWillClose(window)
+            }
         }
     }
 

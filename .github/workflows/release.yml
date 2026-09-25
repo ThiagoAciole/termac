@@ -1,8 +1,8 @@
 name: Build & Release
 
-# A cada push em main / PR: builda, testa e gera DMG + zip (artifacts do run).
-# Em tags v*: publica GitHub Release com os instaladores e faz bump do tap Homebrew.
-
+# PRs validate the project and upload installers as workflow artifacts.
+# Pushes to main publish/update a GitHub Release when signing secrets exist.
+# Tags v* remain supported for manually versioned releases.
 on:
   push:
     branches: [main]
@@ -21,8 +21,6 @@ env:
   SCHEME: Termac
   APP_NAME: Termac.app
   IDENTITY: Termac Self-Signed
-  # Fingerprint SHA-256 da identidade de assinatura (sem dois-pontos).
-  # docs/SIGNING.md — atualize junto com os docs ao rotacionar a identidade.
   EXPECTED_FINGERPRINT: "BD3410131BF1D658CD0E82C6585C0AB1EC30C9C8F826C985614C582514C5EED4"
 
 jobs:
@@ -62,8 +60,9 @@ jobs:
               exit 1
             fi
             echo "Identidade importada e fingerprint verificado."
+            echo "RELEASE_READY=true" >> "$GITHUB_ENV"
           else
-            echo "::warning::SIGNING_P12_BASE64/PASSWORD ausentes — usando identidade descartável (não distribua como release)."
+            echo "::warning::Secrets de assinatura ausentes — usando identidade descartável; este run não publica release."
             TMP="$(mktemp -d)"
             openssl req -x509 -newkey rsa:2048 -nodes -days 1 \
               -keyout "$TMP/key.pem" -out "$TMP/cert.pem" \
@@ -81,11 +80,16 @@ jobs:
             rm -rf "$TMP"
           fi
 
+      - name: Rodar testes
+        run: xcodebuild -project Termac.xcodeproj -scheme "$SCHEME" \
+          -destination 'platform=macOS' test -quiet
+
       - name: Build Release + DMG assinado
         run: ./Script/make-dmg.sh
 
-      - name: Empacotar zip do app
+      - name: Empacotar ZIP do app e ler versão
         run: |
+          set -euo pipefail
           VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' \
             build-dmg-derived/Build/Products/Release/Termac.app/Contents/Info.plist)"
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
@@ -97,9 +101,14 @@ jobs:
         run: |
           TAG_VERSION="${GITHUB_REF_NAME#v}"
           if [[ "$TAG_VERSION" != "$VERSION" ]]; then
-            echo "::error::Tag ${GITHUB_REF_NAME} != MARKETING_VERSION ${VERSION}. Alinhe antes de releasear."
+            echo "::error::Tag ${GITHUB_REF_NAME} != MARKETING_VERSION ${VERSION}."
             exit 1
           fi
+
+      - name: Gerar checksums
+        run: |
+          shasum -a 256 "dist/Termac-${VERSION}.dmg" Termac-macos.zip \
+            > "Termac-${VERSION}-checksums.txt"
 
       - name: Upload dos instaladores (todo run)
         uses: actions/upload-artifact@v4
@@ -108,20 +117,35 @@ jobs:
           path: |
             dist/Termac-${{ env.VERSION }}.dmg
             Termac-macos.zip
+            Termac-${{ env.VERSION }}-checksums.txt
           if-no-files-found: error
 
-      - name: Publicar GitHub Release (tags v*)
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Publicar GitHub Release (main ou tag)
+        if: env.RELEASE_READY == 'true' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" \
-            "dist/Termac-${VERSION}.dmg" "Termac-macos.zip" \
-            --title "Termac $VERSION" \
-            --generate-notes
+          set -euo pipefail
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            RELEASE_TAG="$GITHUB_REF_NAME"
+          else
+            RELEASE_TAG="v${VERSION}"
+          fi
 
-      - name: Bump do tap Homebrew (tags v*)
-        if: startsWith(github.ref, 'refs/tags/v')
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" \
+              "dist/Termac-${VERSION}.dmg" Termac-macos.zip \
+              "Termac-${VERSION}-checksums.txt" --clobber
+          else
+            gh release create "$RELEASE_TAG" \
+              "dist/Termac-${VERSION}.dmg" Termac-macos.zip \
+              "Termac-${VERSION}-checksums.txt" \
+              --title "Termac ${VERSION}" \
+              --generate-notes
+          fi
+
+      - name: Bump do tap Homebrew (release publicada)
+        if: env.RELEASE_READY == 'true' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
         env:
           HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
           GH_TOKEN: ${{ github.token }}
@@ -137,7 +161,7 @@ jobs:
           AUTH="Authorization: Bearer $HOMEBREW_TAP_TOKEN"
 
           if ! gh api -H "$AUTH" "repos/ThiagoAciole/homebrew-termac" >/dev/null 2>&1; then
-            echo "::warning::Tap ThiagoAciole/homebrew-termac inacessível — pulando bump do cask."
+            echo "::warning::Tap inacessível — pulando bump do cask."
             exit 0
           fi
 

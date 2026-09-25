@@ -70,7 +70,7 @@ O script assina o app com a identidade, monta o volume com o `Termac.app` + link
 
 ## 3. Segredos de CI
 
-O workflow [`.github/workflows/release.yml`](../.github/workflows/release.yml) importa a identidade destes secrets e confere o fingerprint contra o `EXPECTED_FINGERPRINT` hardcodeado. Sem os secrets, o build roda com identidade descartável e publica só artifacts (nunca release).
+O workflow [`.github/workflows/release.yml`](../.github/workflows/release.yml) importa a identidade destes secrets e confere o fingerprint contra o `EXPECTED_FINGERPRINT` hardcodeado. Com os secrets configurados, cada push na `main` publica ou atualiza automaticamente a release correspondente ao `MARKETING_VERSION`, incluindo DMG, ZIP e checksums. Sem os secrets, o build roda com identidade descartável e publica apenas artifacts (nunca uma release pública).
 
 Exporte **só** a identidade Termac (Keychain Access → selecione `Termac Self-Signed` → File → Export Items… como PKCS#12). **Não** rode `security export -t identities` no keychain inteiro — isso pode empacotar chaves alheias no secret.
 

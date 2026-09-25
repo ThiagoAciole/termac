@@ -174,6 +174,20 @@ struct AppSettingsTests {
         #expect(settings.showCommandPaletteButton)
     }
 
+    @Test func resetToDefaultsRestoresAndPersistsSettings() throws {
+        let url = try makeTempConfigURL()
+        defer { cleanup(url) }
+
+        let settings = makeSettings(configURL: url)
+        settings.terminalPadding = 32
+        settings.showCwdInTabTitle = false
+        settings.resetToDefaults()
+
+        #expect(settings.terminalPadding == AppSettings.Defaults.terminalPadding)
+        #expect(settings.showCwdInTabTitle == AppSettings.Defaults.showCwdInTabTitle)
+        #expect(try TermacConfigStore.load(from: url).window.padding == AppSettings.Defaults.terminalPadding)
+    }
+
     @Test func terminalPaddingClampsToLimits() throws {
         let url = try makeTempConfigURL()
         defer { cleanup(url) }
